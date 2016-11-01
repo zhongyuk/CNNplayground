@@ -1,1 +1,2 @@
-# CNN_Playground
+# CNN Playground 
+**(Udacity Machine Learning NanoDegree Capstone Project)**
