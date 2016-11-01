@@ -1,0 +1,9 @@
+# cifar-10 data 
+cifar10_data
+
+# compiled python file
+.pyc
+
+# Ipython Notebook check points
+.ipynb_checkpoints
+
