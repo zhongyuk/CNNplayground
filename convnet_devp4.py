@@ -20,10 +20,6 @@ def _initialize_BN(variable_scope, depth):
         beta = tf.get_variable("beta", depth, initializer=tf.constant_initializer(0.0))
         moving_avg = tf.get_variable("moving_avg", depth, initializer=tf.constant_initializer(0.0), trainable=False)
         moving_var = tf.get_variable("moving_var", depth, initializer=tf.constant_initializer(1.0), trainable=False)
-        #variable_summaries(gamma, variable_scope+'/gamma')
-        #variable_summaries(beta, variable_scope+'/beta')
-        #variable_summaries(moving_avg, variable_scope+'/moving_mean')
-        #variable_summaries(moving_var, variable_scope+'/moving_std')
         scope.reuse_variables()
         
 def initialize_variables(cnn_shapes, initializer, batch_norm=False):
@@ -58,9 +54,8 @@ def conv_layer(x, variable_scope, stride=1, padding='SAME'):
         w = tf.get_variable("wt")
         b = tf.get_variable("bi")
         y = tf.nn.conv2d(x, w, [1, stride, stride, 1], padding=padding) + b
-        variable_summaries(w, variable_scope+'/weights')
-        variable_summaries(b, variable_scope+'/biases')
-        tf.histogram_summary(variable_scope+'/preBN', y)
+        #variable_summaries(w, variable_scope+'/weights')
+        #variable_summaries(b, variable_scope+'/biases')
     return y
 
 def fc_layer(x, variable_scope):
@@ -68,19 +63,19 @@ def fc_layer(x, variable_scope):
         w = tf.get_variable("wt")
         b = tf.get_variable("bi")
         y = tf.matmul(x, w) + b
-        variable_summaries(w, variable_scope+'/weights')
-        variable_summaries(b, variable_scope+'/biases')
-        tf.histogram_summary(variable_scope+'/preBN', y)
+        #variable_summaries(w, variable_scope+'/weights')
+        #variable_summaries(b, variable_scope+'/biases')
     return y
 
 def batch_norm_layer(x, variable_scope, is_training, epsilon=0.001, decay=.999):
+    #tf.histogram_summary(variable_scope+'/preBN', x)
     with tf.variable_scope(variable_scope+'/BatchNorm', reuse=True):
         gamma, beta = tf.get_variable("gamma"), tf.get_variable("beta")
         moving_avg, moving_var = tf.get_variable("moving_avg"), tf.get_variable("moving_var")
-        variable_summaries(gamma, variable_scope+'/gamma')
-        variable_summaries(beta, variable_scope+'/beta')
-        variable_summaries(moving_avg, variable_scope+'/moving_mean')
-        variable_summaries(moving_var, variable_scope+'/moving_std')
+        #variable_summaries(gamma, variable_scope+'/gamma')
+        #variable_summaries(beta, variable_scope+'/beta')
+        #variable_summaries(moving_avg, variable_scope+'/moving_avg')
+        #variable_summaries(moving_var, variable_scope+'/moving_std')
         shape = x.get_shape().as_list()
         control_inputs = []
         if is_training:
@@ -93,7 +88,7 @@ def batch_norm_layer(x, variable_scope, is_training, epsilon=0.001, decay=.999):
             var = moving_var
         with tf.control_dependencies(control_inputs):
             y = tf.nn.batch_normalization(x, avg, var, offset=beta, scale=gamma, variance_epsilon=epsilon)
-        tf.histogram_summary(variable_scope+'/postBN', y)
+            #tf.histogram_summary(variable_scope+'/postBN', y)
     return y
 
 def cnn_model(data, variable_scopes, is_training, batch_norm, keep_prob):
@@ -103,9 +98,9 @@ def cnn_model(data, variable_scopes, is_training, batch_norm, keep_prob):
         x = conv_layer(x ,var_scope)
         if batch_norm:
             x = batch_norm_layer(x, var_scope, is_training)
-        tf.histogram_summary(var_scope+'/preActivation', x)
+        #tf.histogram_summary(var_scope+'/preActivation', x)
         x = tf.nn.relu(x)
-        tf.histogram_summary(var_scope+'/postActivation', x)
+        #tf.histogram_summary(var_scope+'/postActivation', x)
         x = pool_layer(x)
     # reshape x to prepare for fully connected layer
     shape = x.get_shape().as_list()
@@ -114,18 +109,18 @@ def cnn_model(data, variable_scopes, is_training, batch_norm, keep_prob):
     x = fc_layer(x, variable_scopes[3])
     if batch_norm:
         x = batch_norm_layer(x, variable_scopes[3], is_training)
-    tf.histogram_summary(var_scope+'/preActivation', x)
+    #tf.histogram_summary(variable_scopes[3]+'/preActivation', x)
     x = tf.nn.relu(x)
-    tf.histogram_summary(var_scope+'/postActivation', x)
+    #tf.histogram_summary(variable_scopes[3]+'/postActivation', x)
     if is_training:
         x = tf.nn.dropout(x, keep_prob)
     # fully connected layer: fc2 -> batch norm -> ReLu -> output
     x = fc_layer(x, variable_scopes[4])
     if batch_norm:
         x = batch_norm_layer(x, variable_scopes[4], is_training)
-    tf.histogram_summary(var_scope+'/preActivation', x)
+    #tf.histogram_summary(variable_scopes[4]+'/preActivation', x)
     y = tf.nn.relu(x)
-    tf.histogram_summary(var_scope+'/postActivation', y)
+    #tf.histogram_summary(variable_scopes[4]+'/postActivation', y)
     return y
 
 def train_cnn(graph, model, tf_data, cnn_shapes, hyperparams, epoches, *args):
@@ -145,13 +140,14 @@ def train_cnn(graph, model, tf_data, cnn_shapes, hyperparams, epoches, *args):
         keep_prob, tfoptimizer = hyperparams['keep_prob'], hyperparams['optimizer']
         init_lr,  global_step = hyperparams['init_lr'], tf.Variable(0)
         decay_steps, decay_rate = hyperparams['decay_steps'], hyperparams['decay_rate']
-        learning_rate = tf.train.exponential_decay(init_lr, global_step, decay_steps, decay_rate, staircase=True)
+        with tf.name_scope('learning_rate'):
+            learning_rate = tf.train.exponential_decay(init_lr, global_step, decay_steps, decay_rate, staircase=True)
+        tf.scalar_summary('learning_rate', learning_rate)
           
         # Compute Loss Function and Predictions
         train_logits = model(tf_train_dataset, scopes, True, batch_norm, keep_prob)
         # Without regularization
         train_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(train_logits, tf_train_labels))
-        tf.scalar_summary('train loss', train_loss)
         # With L2 regularization applied to fully connected layers
         #l2_reg_loss = 0
         #with tf.variable_scope('fc1', reuse=True):
@@ -165,9 +161,9 @@ def train_cnn(graph, model, tf_data, cnn_shapes, hyperparams, epoches, *args):
           
         valid_logits = model(tf_valid_dataset, scopes, False, batch_norm, keep_prob)
         valid_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(valid_logits,tf_valid_labels))
-        tf.scalar_summary('validation loss', valid_loss)
         valid_prediction = tf.nn.softmax(valid_logits)
         test_prediction = tf.nn.softmax(model(tf_test_dataset, scopes, False, batch_norm, keep_prob))
+
         merge_summary_op = tf.merge_all_summaries()
         
   # Train Convnet
@@ -260,11 +256,11 @@ if __name__=='__main__':
     print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
       
     # Network parameters
-    batch_size = 128
+    batch_size = 64
     kernel_size3 = 3
     kernel_size5 = 5
-    num_filter = 64
-    fc_size1 = 512
+    num_filter = 12
+    fc_size1 = 64
       
     # Setup shapes for each layer in the convnet
     convnet_shapes = [['conv1', [kernel_size5, kernel_size5, num_channels, num_filter]],
@@ -274,13 +270,13 @@ if __name__=='__main__':
                       ['fc2'  , [fc_size1, num_labels]]]
       
     # Prepare data for tensorflow
-    #graph = tf.Graph()
-    #with graph.as_default():
-    #tf_data = {'train_X': tf.placeholder(tf.float32, shape=(batch_size, image_size, image_size, num_channels)),
-    #'train_y': tf.placeholder(tf.float32, shape=(batch_size, num_labels)),
-    #'valid_X': tf.constant(valid_dataset), 'valid_y': tf.constant(valid_labels),
-    #'test_X' : tf.constant(test_dataset),  'test_y' : tf.constant(test_labels)}
-    #tfoptimizer = tf.train.AdamOptimizer
+    graph = tf.Graph()
+    with graph.as_default():
+        tf_data = {'train_X': tf.placeholder(tf.float32, shape=(batch_size, image_size, image_size, num_channels)),
+                   'train_y': tf.placeholder(tf.float32, shape=(batch_size, num_labels)),
+                   'valid_X': tf.constant(valid_dataset), 'valid_y': tf.constant(valid_labels),
+                   'test_X' : tf.constant(test_dataset),  'test_y' : tf.constant(test_labels)}
+        tfoptimizer = tf.train.AdamOptimizer
       
     # HyperParameters
     hyperparams = {'keep_prob': 0.47, 'init_lr': 0.002, 'decay_rate': .9, 'decay_steps': 100,
@@ -288,21 +284,16 @@ if __name__=='__main__':
                     'initializer': tf.truncated_normal_initializer(stddev=.015)} #tf.contrib.layers.variance_scaling_initializer()}
       
     # Setup computation graph and train convnet
-    #steps = 31
-    #model, save_data_name = cnn_model, 'training_data_stack3.1'
+    steps = 31
+    model, save_data_name = cnn_model, 'training_data_stack3.1'
     #model, save_data_name = convnet_inception, 'training_data_inception'
-    #_, training_data = train_cnn(graph, model, tf_data, convnet_shapes, hyperparams, \
+    _, training_data = train_cnn(graph, model, tf_data, convnet_shapes, hyperparams, \
                                     steps, True, train_dataset, train_labels, batch_size)
       
     # Save data
     #with open(save_data_name, 'w') as fh:
         #pickle.dump(training_data, fh)
-    graph = tf.Graph()
-    with graph.as_default():
-        tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, image_size, image_size, num_channels))
-        tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, num_labels))
-        tf_valid_dataset = tf.constant(valid_dataset)
-        tf_test_dataset = tf.constant(test_dataset)
+
         
 
                           
