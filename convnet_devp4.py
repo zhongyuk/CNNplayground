@@ -4,6 +4,7 @@ from six.moves import cPickle as pickle
 from sklearn.model_selection import train_test_split
 import time
 from tensorflow.python.training import moving_averages
+from tensorflow.contrib.layers.python.layers import utils
 from prepare_input import *
 
 def _initialize_wts_bis(variable_scope, shape, initializer=tf.truncated_normal_initializer(stddev=.01)):
@@ -14,12 +15,17 @@ def _initialize_wts_bis(variable_scope, shape, initializer=tf.truncated_normal_i
         variable_summaries(b, variable_scope+'/biases')
         scope.reuse_variables()
 
+
 def _initialize_BN(variable_scope, depth):
     with tf.variable_scope(variable_scope+'/BatchNorm') as scope:
         gamma = tf.get_variable("gamma", depth, initializer=tf.constant_initializer(1.0))
         beta = tf.get_variable("beta", depth, initializer=tf.constant_initializer(0.0))
         moving_avg = tf.get_variable("moving_avg", depth, initializer=tf.constant_initializer(0.0), trainable=False)
         moving_var = tf.get_variable("moving_var", depth, initializer=tf.constant_initializer(1.0), trainable=False)
+        variable_summaries(gamma, variable_scope+'/scale_gamma')
+        variable_summaries(beta, variable_scope+'/offset_beta')
+        variable_summaries(moving_avg, variable_scope+'/moving_mean')
+        variable_summaries(moving_var, variable_scope+'/moving_variance')
         scope.reuse_variables()
         
 def initialize_variables(cnn_shapes, initializer, batch_norm=False):
@@ -54,8 +60,6 @@ def conv_layer(x, variable_scope, stride=1, padding='SAME'):
         w = tf.get_variable("wt")
         b = tf.get_variable("bi")
         y = tf.nn.conv2d(x, w, [1, stride, stride, 1], padding=padding) + b
-        #variable_summaries(w, variable_scope+'/weights')
-        #variable_summaries(b, variable_scope+'/biases')
     return y
 
 def fc_layer(x, variable_scope):
@@ -63,19 +67,13 @@ def fc_layer(x, variable_scope):
         w = tf.get_variable("wt")
         b = tf.get_variable("bi")
         y = tf.matmul(x, w) + b
-        #variable_summaries(w, variable_scope+'/weights')
-        #variable_summaries(b, variable_scope+'/biases')
     return y
 
 def batch_norm_layer(x, variable_scope, is_training, epsilon=0.001, decay=.999):
-    #tf.histogram_summary(variable_scope+'/preBN', x)
     with tf.variable_scope(variable_scope+'/BatchNorm', reuse=True):
+        tf.histogram_summary(variable_scope+'/preBN', x)
         gamma, beta = tf.get_variable("gamma"), tf.get_variable("beta")
         moving_avg, moving_var = tf.get_variable("moving_avg"), tf.get_variable("moving_var")
-        #variable_summaries(gamma, variable_scope+'/gamma')
-        #variable_summaries(beta, variable_scope+'/beta')
-        #variable_summaries(moving_avg, variable_scope+'/moving_avg')
-        #variable_summaries(moving_var, variable_scope+'/moving_std')
         shape = x.get_shape().as_list()
         control_inputs = []
         if is_training:
@@ -88,7 +86,7 @@ def batch_norm_layer(x, variable_scope, is_training, epsilon=0.001, decay=.999):
             var = moving_var
         with tf.control_dependencies(control_inputs):
             y = tf.nn.batch_normalization(x, avg, var, offset=beta, scale=gamma, variance_epsilon=epsilon)
-            #tf.histogram_summary(variable_scope+'/postBN', y)
+        tf.histogram_summary(variable_scope+'/postBN', y)
     return y
 
 def cnn_model(data, variable_scopes, is_training, batch_norm, keep_prob):
@@ -98,9 +96,7 @@ def cnn_model(data, variable_scopes, is_training, batch_norm, keep_prob):
         x = conv_layer(x ,var_scope)
         if batch_norm:
             x = batch_norm_layer(x, var_scope, is_training)
-        #tf.histogram_summary(var_scope+'/preActivation', x)
         x = tf.nn.relu(x)
-        #tf.histogram_summary(var_scope+'/postActivation', x)
         x = pool_layer(x)
     # reshape x to prepare for fully connected layer
     shape = x.get_shape().as_list()
@@ -109,23 +105,20 @@ def cnn_model(data, variable_scopes, is_training, batch_norm, keep_prob):
     x = fc_layer(x, variable_scopes[3])
     if batch_norm:
         x = batch_norm_layer(x, variable_scopes[3], is_training)
-    #tf.histogram_summary(variable_scopes[3]+'/preActivation', x)
     x = tf.nn.relu(x)
-    #tf.histogram_summary(variable_scopes[3]+'/postActivation', x)
     if is_training:
         x = tf.nn.dropout(x, keep_prob)
     # fully connected layer: fc2 -> batch norm -> ReLu -> output
     x = fc_layer(x, variable_scopes[4])
     if batch_norm:
         x = batch_norm_layer(x, variable_scopes[4], is_training)
-    #tf.histogram_summary(variable_scopes[4]+'/preActivation', x)
     y = tf.nn.relu(x)
-    #tf.histogram_summary(variable_scopes[4]+'/postActivation', y)
     return y
 
 def train_cnn(graph, model, tf_data, cnn_shapes, hyperparams, epoches, *args):
     print "Prepare network parameters", "."*32
     with graph.as_default():
+        #is_training = tf.placeholder(tf.bool)
         # Setup training, validation, testing dataset
         tf_train_dataset, tf_train_labels = tf_data['train_X'], tf_data['train_y']
         tf_valid_dataset, tf_valid_labels = tf_data['valid_X'], tf_data['valid_y']
@@ -145,6 +138,7 @@ def train_cnn(graph, model, tf_data, cnn_shapes, hyperparams, epoches, *args):
         tf.scalar_summary('learning_rate', learning_rate)
           
         # Compute Loss Function and Predictions
+        #is_training_value = utils.constant_value(is_training)
         train_logits = model(tf_train_dataset, scopes, True, batch_norm, keep_prob)
         # Without regularization
         train_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(train_logits, tf_train_labels))
@@ -159,10 +153,10 @@ def train_cnn(graph, model, tf_data, cnn_shapes, hyperparams, epoches, *args):
         # Optimizer
         optimizer = tfoptimizer(learning_rate).minimize(train_loss, global_step=global_step)
           
-        valid_logits = model(tf_valid_dataset, scopes, False, batch_norm, keep_prob)
-        valid_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(valid_logits,tf_valid_labels))
-        valid_prediction = tf.nn.softmax(valid_logits)
-        test_prediction = tf.nn.softmax(model(tf_test_dataset, scopes, False, batch_norm, keep_prob))
+        #valid_logits = model(tf_valid_dataset, scopes, False, batch_norm, keep_prob)
+        #valid_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(valid_logits,tf_valid_labels))
+        #valid_prediction = tf.nn.softmax(valid_logits)
+        #test_prediction = tf.nn.softmax(model(tf_test_dataset, scopes, False, batch_norm, keep_prob))
 
         merge_summary_op = tf.merge_all_summaries()
         
@@ -173,10 +167,11 @@ def train_cnn(graph, model, tf_data, cnn_shapes, hyperparams, epoches, *args):
     
     print "Start training", '.'*32
     with tf.Session(graph=graph) as session:
-        writer = tf.train.SummaryWriter('logs/', graph=session.graph)
+        train_writer = tf.train.SummaryWriter('logs/', graph=session.graph)
         tf.initialize_all_variables().run()
         print('Initialized')
         for epoch in range(epoches):
+            print "training epoch ", epoch
             t = time.time()
             offset = (epoch * batch_size) % (train_labels.shape[0] - batch_size)
             batch_data = train_dataset[offset:(offset+batch_size), :, :, :]
@@ -184,25 +179,26 @@ def train_cnn(graph, model, tf_data, cnn_shapes, hyperparams, epoches, *args):
             feed_dict = {tf_train_dataset:batch_data, tf_train_labels:batch_labels}
             # Run session...
             _, tl, predictions, summaries = session.run([optimizer, train_loss, train_prediction, merge_summary_op], feed_dict=feed_dict)
-            writer.add_summary(summaries, epoch)
+            train_writer.add_summary(summaries, epoch)
             
             train_losses[epoch] = tl
             train_acc[epoch] = accuracy(predictions, batch_labels)
             #tf.scalar_summary('train accuracy', train_acc[epoch])
-            # Compute validation set accuracy
-            valid_losses[epoch] = valid_loss.eval()
-            valid_acc[epoch] = accuracy(valid_prediction.eval(), tf_valid_labels.eval())
+            # Compute validation set accuracy  
+            #valid_losses[epoch] = valid_loss.eval(feed_dict)
+            #valid_acc[epoch] = accuracy(valid_prediction.eval(feed_dict), tf_valid_labels.eval(feed_dict))
             #tf.scalar_summary('validation accuracy', train_acc[epoch])
-            print('Epoch: %d:\tLoss: %f\t\tTime cost: %1.f\t\tTrain Acc: %.2f%%\tValid Acc: %2.f%%\tLearning rate: %.6f' \
-                %(epoch, tl, (time.time()-t), (train_acc[epoch]*100), (valid_acc[epoch]*100),learning_rate.eval(),))
+            #print('Epoch: %d:\tLoss: %f\t\tTime cost: %1.f\t\tTrain Acc: %.2f%%\tValid Acc: %2.f%%\tLearning rate: %.6f' \
+                #%(epoch, tl, (time.time()-t), (train_acc[epoch]*100), (valid_acc[epoch]*100),learning_rate.eval(),))
         print "Finished training", '.'*32
         # Compute test set accuracy
-        test_acc = accuracy(test_prediction.eval(), tf_test_labels.eval())
+        #test_acc = accuracy(test_prediction.eval(), tf_test_labels.eval())
         print("Test accuracy: %2.f%%" %(test_acc*100))
-        writer.close()
+        train_writer.close()
         # Group training data into a dictionary
         training_data = {'train_losses' : train_losses, 'train_acc' : train_acc, \
         'valid_losses' : valid_losses, 'valid_acc' : valid_acc, 'test_acc' : test_acc}
+        train_writer.close()
             
     return graph, training_data
 
@@ -259,7 +255,7 @@ if __name__=='__main__':
     batch_size = 64
     kernel_size3 = 3
     kernel_size5 = 5
-    num_filter = 12
+    num_filter = 8
     fc_size1 = 64
       
     # Setup shapes for each layer in the convnet
