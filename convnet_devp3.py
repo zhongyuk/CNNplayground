@@ -11,11 +11,11 @@ def initialize_variables(convnet_shapes, initializer=tf.truncated_normal_initial
         with tf.variable_scope(scope_name) as scope:
             w = tf.get_variable("wt", shape, initializer=initializer)
             b = tf.get_variable("bi", shape[-1], initializer=tf.constant_initializer(1.0))
-            if batch_norm:
-                gamma = tf.get_variable("gamma", shape[-1], initializer=tf.constant_initializer(1.0))
-                beta = tf.get_variable("beta", shape[-1], initializer=tf.constant_initializer(0.0))
-                moving_avg = tf.get_variable("moving_mean", shape[-1], initializer=tf.constant_initializer(0.0), trainable=False)
-                moving_var = tf.get_variable("moving_variance", shape[-1], initializer=tf.constant_initializer(1.0), trainable=False)
+            #if batch_norm:
+                #gamma = tf.get_variable("gamma", shape[-1], initializer=tf.constant_initializer(1.0))
+                #beta = tf.get_variable("beta", shape[-1], initializer=tf.constant_initializer(0.0))
+                #moving_avg = tf.get_variable("moving_mean", shape[-1], initializer=tf.constant_initializer(0.0), trainable=False)
+                #moving_var = tf.get_variable("moving_variance", shape[-1], initializer=tf.constant_initializer(1.0), trainable=False)
             scope.reuse_variables()
 
 def conv_layer(x, scope, stride=1, padding='SAME'):
@@ -69,10 +69,11 @@ def full_layer(x, scope):
 def conv(x, scope, is_training, batch_norm):
     x = conv_layer(x, scope)
     if batch_norm:
-        x = BatchNorm_layer(x, scope, is_training)   
-        #x = tf.cond(train, \
-            #lambda: tf.contrib.layers.batch_norm(x, scale=True, is_training=True, updates_collections=None, scope=scope, reuse=True), \
-            #lambda: tf.contrib.layers.batch_norm(x, scale=True, is_training=False, updates_collections=None, scope=scope, reuse=True))
+        with tf.name_scope(scope):
+            #x = BatchNorm_layer(x, scope, is_training)   
+            x = tf.cond(is_training, \
+                lambda: tf.contrib.layers.batch_norm(x, center=False, is_training=True, updates_collections=None, scope=scope, reuse=None), \
+                lambda: tf.contrib.layers.batch_norm(x, center=False, is_training=False, updates_collections=None, scope=scope, reuse=True))
     x = tf.nn.relu(x)
     x = pool_layer(x, "max")
     return x
@@ -80,10 +81,11 @@ def conv(x, scope, is_training, batch_norm):
 def fc(x, scope, is_training, batch_norm, dropout, keep_prob=.5):
     x = full_layer(x, scope)
     if batch_norm:
-        x = BatchNorm_layer(x, scope, is_training)
-        #x = tf.cond(train, \
-            #lambda: tf.contrib.layers.batch_norm(x, scale=True, is_training=True, updates_collections=None, scope=scope, reuse=True), \
-            #lambda: tf.contrib.layers.batch_norm(x, scale=True, is_training=False, updates_collections=None, scope=scope, reuse=True))
+        with tf.name_scope(scope):
+        #x = BatchNorm_layer(x, scope, is_training)
+            x = tf.cond(is_training, \
+                lambda: tf.contrib.layers.batch_norm(x, center=False, is_training=True, updates_collections=None, scope=scope, reuse=None), \
+                lambda: tf.contrib.layers.batch_norm(x, center=False, is_training=False, updates_collections=None, scope=scope, reuse=True))
     x = tf.nn.relu(x)
     if dropout:
         #x = tf.nn.dropout(x, keep_prob)
@@ -162,7 +164,7 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
         # Optimizer
         optimizer = tfoptimizer(learning_rate).minimize(train_loss, global_step=global_step)
 
-        valid_logits = model(tf_valid_dataset, scopes, is_training, keep_prob, batch_norm)
+        valid_logits = model(tf_valid_dataset, scopes, is_training, keep_prob, False)
         valid_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(valid_logits,tf_valid_labels))
         valid_prediction = tf.nn.softmax(valid_logits)
         if tf_test_dataset!=None:
@@ -198,7 +200,7 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
             else:
                 train_acc[step] = accuracy(tpreds, tf_train_labels.eval())
             # Compute validation set accuracy
-            feed_dict[is_training] = True
+            feed_dict[is_training] = False
             vloss, vpreds, vlabels = session.run([valid_loss, valid_prediction, tf_valid_labels], feed_dict=feed_dict)
             valid_losses[step] = vloss
             valid_acc[step] = accuracy(vpreds, vlabels)
@@ -207,7 +209,7 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
         print "Finished training", '.'*32
         # Compute test set accuracy
         if test_prediction!=None:
-            test_acc = accuracy(test_prediction.eval(feed_dict={is_training:True}), tf_test_labels.eval())
+            test_acc = accuracy(test_prediction.eval(feed_dict={is_training:False}), tf_test_labels.eval())
             print("Test accuracy: %2.f%%" %(test_acc*100))
         else:
             test_acc = None
@@ -271,7 +273,7 @@ if __name__=='__main__':
     batch_size = 32
     kernel_size3 = 3
     kernel_size5 = 5
-    num_filter = 64
+    num_filter = 8
     fc_size1 = 512
 
     # Setup shapes for each layer in the convnet

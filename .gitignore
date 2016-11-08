@@ -7,3 +7,9 @@ cifar10_data
 # Ipython Notebook check points
 *.ipynb_checkpoints
 
+# Temp Log File
+/tmp/*
+/logs/*
+
+# TensorBoard Example Script
+tb_example.py
