@@ -13,3 +13,6 @@ cifar10_data
 
 # TensorBoard Example Script
 tb_example.py
+
+# report pages file
+*.pages
