@@ -1,4 +1,5 @@
-## Udacity Machine Learning Nanodegree Capstone Project - Image Classification using Convolutional Neural Network
+## Image Classification using Convolutional Neural Network 
+**Udacity Machine Learning Nanodegree Capstone Project **
 
 #### Dataset
 [CIFAR-10](http://www.cs.utoronto.ca/~kriz/cifar.html)
