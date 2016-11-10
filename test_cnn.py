@@ -4,13 +4,13 @@ from cnn import *
 
 def test_conv(steps):
 	try:
-		convx = conv('convx', [1,2])
+		convx = conv2d('convx', [1,2])
 	except ValueError:
 		print "Successfully catch shape error"
 
 	sess = tf.InteractiveSession()
 	shape = [1, 1, 3, 1]
-	conv1 = conv('conv1', shape) 
+	conv1 = conv2d('conv1', shape) 
 	assert(conv1.get_layer_name()=='conv1')
 	assert(conv1.get_layer_type()=='conv')
 	assert(conv1.is_trainable()==True)
