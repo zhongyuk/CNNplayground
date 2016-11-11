@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from six.moves import cPickle as pickle
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 import time
 
 def unpickle(file):
