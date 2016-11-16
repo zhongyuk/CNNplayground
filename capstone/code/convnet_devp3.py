@@ -4,6 +4,7 @@ from six.moves import cPickle as pickle
 from sklearn.model_selection import train_test_split
 import time
 from prepare_input import *
+from tensorflow.python.training import moving_averages
 
 def initialize_variables(convnet_shapes, initializer=tf.truncated_normal_initializer(stddev=.01), batch_norm=False):
     for item in convnet_shapes:
@@ -44,8 +45,8 @@ def BatchNorm_layer(x, scope, train, epsilon=0.001, decay=.999):
             control_inputs = []
             if train:
                 avg, var = tf.nn.moments(x, range(len(shape)-1))
-                update_moving_avg = tf.python.training.moving_averages.assign_moving_average(moving_avg, avg, decay)
-                update_moving_var = tf.python.training.moving_averages.assign_moving_average(moving_var, var, decay)
+                update_moving_avg = moving_averages.assign_moving_average(moving_avg, avg, decay)
+                update_moving_var = moving_averages.assign_moving_average(moving_var, var, decay)
                 control_inputs = [update_moving_avg, update_moving_var]
             else:
                 avg = moving_avg

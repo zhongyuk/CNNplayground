@@ -3,11 +3,12 @@ import numpy as np
 import sys
 from tensorflow.python.framework import ops
 from tf_batchnorm import batch_norm
+from tensorflow.python.training import moving_averages
 
 sys.path.append("../")
 from cnn import layer
 
-class batchnorm_test(layer):
+class batchnorm_v1(layer):
 
 	TRAINABLE = True
 	FULLNAME = "Batch Normalization Layer"
@@ -24,16 +25,16 @@ class batchnorm_test(layer):
 		return self._layer_name
 
 	def get_layer_type(self):
-		return batchnorm_test.FULLNAME
+		return batchnorm_v1.FULLNAME
 
 	def is_trainable(self):
-		return batchnorm_test.TRAINABLE
+		return batchnorm_v2.TRAINABLE
 
 	def initialize(self):
 		with tf.variable_scope(self._layer_name, reuse=None) as scope:
 			if self._center:
 				beta = tf.get_variable("beta", self._depth, 
-					    initializer=tf.constant_initializer(0.2),
+					    initializer=tf.constant_initializer(.2),
 						trainable=True)
 			if self._scale:
 				gamma = tf.get_variable("gamma", self._depth, 
@@ -74,22 +75,92 @@ class batchnorm_test(layer):
 				tf.histogram_summary(self._layer_name, output)
 		return output
 
+class batchnorm_v2(layer):
+	TRAINABLE = True
+	FULLNAME = "Batch Normalization Layer"
+
+	def __init__(self, layer_name, depth, decay=0.99):
+		self._layer_name = layer_name
+		self._depth = depth
+		self._decay = decay
+
+	def get_layer_name(self):
+		return self._layer_name
+
+	def get_layer_type(self):
+		return batchnorm_v2.FULLNAME
+
+	def is_trainable(self):
+		return batchnorm_v2.TRAINABLE 
+
+	def initialize(self):
+		with tf.variable_scope(self._layer_name, reuse=None) as scope:
+			beta = tf.get_variable("beta", self._depth, 
+				    initializer=tf.constant_initializer(.2),
+					trainable=True)
+			gamma = tf.get_variable("gamma", self._depth, 
+					initializer=tf.constant_initializer(.5),
+					trainable=True)
+			moving_avg = tf.get_variable("moving_mean", self._depth,
+						 initializer=tf.constant_initializer(0.0),
+						 trainable=False)
+			moving_var = tf.get_variable("moving_variance", self._depth,
+						 initializer=tf.constant_initializer(1.0),
+						 trainable=False)
+			scope.reuse_variables()
+
+	def get_variables(self):
+		with tf.variable_scope(self._layer_name, reuse=True) as scope:
+			beta = tf.get_variable("beta")
+			gamma = tf.get_variable("gamma")
+			moving_avg = tf.get_variable("moving_mean")
+			moving_var = tf.get_variable("moving_variance")
+			return beta, gamma, moving_avg, moving_var
+
+	def train(self, input, is_training):
+		with tf.variable_scope(self._layer_name, reuse=True):
+			gamma, beta = tf.get_variable("gamma"), tf.get_variable("beta")
+			moving_avg, moving_var = tf.get_variable("moving_mean"), tf.get_variable("moving_variance")
+			shape = input.get_shape().as_list()
+			control_inputs = []
+			if is_training:
+				avg, var = tf.nn.moments(input, range(len(shape)-1))
+				update_moving_avg = moving_averages.assign_moving_average(moving_avg, avg, self._decay)
+				update_moving_var = moving_averages.assign_moving_average(moving_var, var, self._decay)
+				control_inputs = [update_moving_var, update_moving_avg]
+			else:
+				avg = moving_avg
+				var = moving_var
+			with tf.control_dependencies(control_inputs):
+				output = tf.nn.batch_normalization(input, avg, var, 
+						 offset=beta, scale=gamma, variance_epsilon=0.001)
+			return output 
+
+
 def test_batchnorm(steps):
 	sess = tf.InteractiveSession()
-	batchnorm1 = batchnorm_test('batchnorm1', 3)
+	batchnorm1 = batchnorm_v1('batchnorm1', 3)
+	batchnorm2 = batchnorm_v2('batchnorm2', 3)
 	assert(batchnorm1.get_layer_name()=='batchnorm1')
 	assert(batchnorm1.get_layer_type()=='Batch Normalization Layer')
 	assert(batchnorm1.is_trainable()==True)
 	batchnorm1.initialize()
+	batchnorm2.initialize()
 	batchnorm1.add_variable_summaries()
 	sess.run([tf.initialize_all_variables()])
-	beta, gamma, moving_avg, moving_var = batchnorm1.get_variables()
-	beta_val, gamma_val, mv_avg, mv_var = sess.run([beta, gamma, moving_avg, moving_var])
+	beta1, gamma1, moving_avg1, moving_var1 = batchnorm1.get_variables()
+	beta2, gamma2, moving_avg2, moving_var2 = batchnorm2.get_variables()
+	beta_val1, gamma_val1, mv_avg1, mv_var1 = sess.run([beta1, gamma1, moving_avg1, moving_var1])
+	beta_val2, gamma_val2, mv_avg2, mv_var2 = sess.run([beta2, gamma2, moving_avg2, moving_var2])
 	print "initialized variables values", '='*8
-	print "beta", '-'*16; print beta_val
-	print "gamma", '-'*16; print gamma_val
-	print "moving mean", "-"*16; print mv_avg
-	print "moving variance", "-"*16; print mv_var
+	print "beta1", '-'*16; print beta_val1
+	print "beta2", '-'*16; print beta_val2
+	print "gamma1", '-'*16; print gamma_val1
+	print "gamma2", '-'*16; print gamma_val2
+	print "moving mean1", "-"*16; print mv_avg1
+	print "moving mean2", "-"*16; print mv_avg2
+	print "moving variance1", "-"*16; print mv_var1
+	print "moving variance2", "-"*16; print mv_var2
 	print "="*32
 
 	input = tf.placeholder(tf.float32, [2,3])
@@ -98,31 +169,48 @@ def test_batchnorm(steps):
 		print "*"*16, i, "*"*16
 		print X_np
 		print '+'*16, 'is_training==True','+'*16
-		y = batchnorm1.train(input, True)
-		beta, gamma, moving_avg, moving_var = batchnorm1.get_variables()
+		y1 = batchnorm1.train(input, True)
+		beta1, gamma1, moving_avg1, moving_var1 = batchnorm1.get_variables()
+		y2 = batchnorm2.train(input, True)
+		beta2, gamma2, moving_avg2, moving_var2 = batchnorm2.get_variables()
 		loc_avg, loc_var = tf.nn.moments(input, [0])
-		with ops.control_dependencies([loc_avg, loc_var, beta, gamma]):
-			y_bn = tf.nn.batch_normalization(input, loc_avg, loc_var, beta,
-			   gamma, variance_epsilon=0.001)
-		mv_avg, mv_var, y_val, ybn_val = sess.run([moving_avg, moving_var, y, y_bn], 
-												 feed_dict={input : X_np})
-		print "moving mean", "-"*16; print mv_avg
-		print "moving variance", "-"*16; print mv_var
-		print "output from tf_batchnorm", "-"*16; print y_val
-		print "output from self developped code snippet", "-"*16; print ybn_val
+		with ops.control_dependencies([loc_avg, loc_var, beta1, gamma1, beta2, gamma2]):
+			y_bn1 = tf.nn.batch_normalization(input, loc_avg, loc_var, beta1,
+			   gamma1, variance_epsilon=0.001)
+			y_bn2 = tf.nn.batch_normalization(input, loc_avg, loc_var, beta2,
+			   gamma2, variance_epsilon=0.001)
+		mv_avg1, mv_var1, y_val1, mv_avg2, mv_var2, y_val2, ybn_val1, ybn_val2 = sess.run([moving_avg1, moving_var1, y1,
+												 moving_avg2, moving_var2, y2, y_bn1, y_bn2], feed_dict={input : X_np})
+		print "moving mean1", "-"*16; print mv_avg1
+		print "moving mean2", "-"*16; print mv_avg2
+		print "moving variance1", "-"*16; print mv_var1		
+		print "moving variance2", "-"*16; print mv_var2
+		print "output from tf_batchnorm1", "-"*16; print y_val1
+		print "output from tf_batchnorm2", "-"*16; print y_val2
+		print "output for verifying mean1 and variance1", "-"*16; print ybn_val1
+		print "output for verifying mean2 and variance2", "-"*16; print ybn_val2
 
 		print '+'*16, 'is_training==False','+'*16
-		y = batchnorm1.train(input, False)
-		beta, gamma, moving_avg, moving_var = batchnorm1.get_variables()
-		with ops.control_dependencies([beta, gamma, moving_avg, moving_var]):
-			y_bn = tf.nn.batch_normalization(input, moving_avg, moving_var, beta,
-										 	 gamma, variance_epsilon=.001)
-		mv_avg, mv_var, y_val, ybn_val = sess.run([moving_avg, moving_var, y, y_bn],
+		y1 = batchnorm1.train(input, False)
+		y2 = batchnorm2.train(input, False)
+		beta1, gamma1, moving_avg1, moving_var1 = batchnorm1.get_variables()
+		beta2, gamma2, moving_avg2, moving_var2 = batchnorm2.get_variables()
+		with ops.control_dependencies([beta1, gamma1, moving_avg1, moving_var1, beta2, gamma2, moving_avg2, moving_var2]):
+			y_bn1 = tf.nn.batch_normalization(input, moving_avg1, moving_var1, beta1,
+										 	 gamma1, variance_epsilon=.001)
+			y_bn2 = tf.nn.batch_normalization(input, moving_avg2, moving_var2, beta2,
+											 gamma2, variance_epsilon=.001)
+		mv_avg1, mv_var1, y_val1, moving_avg2, moving_var2, y_val2, ybn_val1, ybn_val2 = sess.run([moving_avg1, moving_var1, y1, 
+											moving_avg2, moving_var2, y2, y_bn1, y_bn2],
 										 feed_dict={input : X_np})
-		print "moving mean", "-"*16; print mv_avg
-		print "moving variance", "-"*16; print mv_var
-		print "output from tf_batchnorm", "-"*16; print y_val
-		print "output from self developped code snippet", "-"*16; print ybn_val
+		print "moving mean1", "-"*16; print mv_avg1
+		print "moving mean2", "-"*16; print mv_avg2
+		print "moving variance1", "-"*16; print mv_var1
+		print "moving variance2", "-"*16; print mv_var2
+		print "output from tf_batchnorm", "-"*16; print y_val1
+		print "output from self devp batchnorm", "-"*16; print y_val2
+		print "output for verifying moving_avg1, moving_var1", "-"*16; print ybn_val1
+		print "output for verifying moving_avg2, moving_var2", "-"*16; print ybn_val2
 
 if __name__ == '__main__':
 	steps = int(raw_input("Run how many steps?"))
