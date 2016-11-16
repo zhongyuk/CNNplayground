@@ -32,7 +32,7 @@ def conv_layer(x, scope, stride=1, padding='SAME'):
     return conv+b
 
 
-def BatchNorm_layer(x, scope, train, epsilon=0.001, decay=.999):
+def BatchNorm_layer(x, scope, train, epsilon=0.001, decay=.9):
     # Perform a batch normalization after a conv layer or a fc layer
     # gamma: a scale factor
     # beta: an offset

@@ -404,25 +404,27 @@ class batchnorm(layer):
 				tf.histogram_summary(self._layer_name, output)
 		return output
 
-class build_cnn(object):
+class cnn_graph(object):
 
 	FULLNAME = 'Convolutional Neural Network Model'
 
 	def __init__(self, input_shape, num_class):
+		# input_shape = [-1, image_size, image_size, image_channels]
 		self._graph = tf.Graph()
-		#self._input_shape = input_shape
+		self._input_shape = input_shape
 		self._num_class = num_class
 		self._all_layers = [{'layer_name'   : 'input_layer',
 							 'layer_shape'  : input_shape,
-							 'layer_pointer': None}] # as a linked list
+							 'layer_obj'    : None}] # as a linked list
 
 	def get_layers(self):
 		return self._all_layers
 
-	def setup_data(self, test_X, test_y, valid_X=None, valid_y=None):
+	def setup_data(self, batch_size, test_X, test_y, valid_X=None, valid_y=None):
 		with self._graph.as_default():
 			with tf.name_scope('train_data'):
-				train_X_shape = [self._batch_size, self._image_size, self._image_size, self._init_depth]
+				train_X_shape = list(self._input_shape)
+				train_X_shape[0] = batch_size
 				self._train_X = tf.placeholder(tf.float32, shape=train_X_shape, name='train_X')
 				self._train_y = tf.placeholder(tf.float32, shape=(self._batch_size, self._num_class), name='train_y')
 
@@ -454,7 +456,7 @@ class build_cnn(object):
 			output_layer_shape = [prev_layer_shape[0], spacial_length, spacial_length, depth]
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
-									 'layer_pointer': conv_layer})
+									 'layer_obj'    : conv_layer})
 
 	def add_fc_layer(self, layer_name, out_shape, wt_initializer=None, bi_initializer=None):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
@@ -473,7 +475,7 @@ class build_cnn(object):
 			output_layer_shape = [prev_layer_shape[0], out_shape]
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
-									 'layer_pointer': fc_layer})
+									 'layer_obj'    : fc_layer})
 
 	def add_pool_layer(self, layer_name, pool_func=tf.nn.max_pool,
 					   kernel_size=2, stride=2, padding='SAME'):
@@ -492,7 +494,7 @@ class build_cnn(object):
 			output_layer_shape = [prev_layer_shape[0], spacial_length, spacial_length, prev_layer_shape[-1]]
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
-									 'layer_pointer': pool_layer})
+									 'layer_obj'    : pool_layer})
 
 	def add_dropout_layer(self, layer_name, keep_prob):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
@@ -504,7 +506,7 @@ class build_cnn(object):
 			output_layer_shape = list(prev_layer_shape)
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
-									 'layer_pointer': dropout_layer})
+									 'layer_obj'    : dropout_layer})
 
 	def add_act_layer(self, layer_name, act_func=tf.nn.relu):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
@@ -516,10 +518,10 @@ class build_cnn(object):
 			output_layer_shape = list(prev_layer_shape)
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
-									 'layer_pointer': act_layer})
+									 'layer_obj'    : act_layer})
 
 	def add_batchnorm_layer(self, layer_name, depth, center=True,
-						    scale=True, decay=.99):
+						    scale=True, decay=.9):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
 		if layer_name in all_layer_names:
 			raise ValueError("layer_name already exists. Please use a different layer name!")
@@ -532,8 +534,119 @@ class build_cnn(object):
 			output_layer_shape = list(prev_layer_shape)
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
-									 'layer_pointer': batchnorm_layer})
+									 'layer_obj'    : batchnorm_layer})
 
+	def __compute_logits(self, input_X, is_training, add_output_summary):
+		for layer_dict in self._all_layers[1:]:
+			layer_obj = layer_dict['layer_obj']
+			layer_type = layer_obj.get_layer_type()
+			if layer_type in ['Dropout Layer', 'Batch Normalization Layer']:
+				input_X = layer_obj.train(input_X, is_training, add_output_summary)
+			else:
+				input_X = layer_obj.train(input_X, add_output_summary)
+		logits = input_X
+		return logits
+
+	def __compute_cross_entropy(self, input_X, input_y, is_training, add_output_summary):
+		logits = self.__compute_logits(input_X, is_training, add_output_summary)
+		cross_entropy = tf.nn.softmax_cross_entropy_with_logits(input_X, input_y)
+		return cross_entropy
+
+	def __compute_l2_reg(self):
+		l2_reg = 0
+		for layer_dict in self._all_layers[1:]:
+			layer_obj = layer_dict['layer_obj']:
+			if layer_obj.get_layer_type()=='Fully Connected Layer':
+				wt, bi = layer_obj.get_variables()
+				l2_reg += tf.nn.l2_loss(wt) + tf.nn.l2_loss(bi)
+		return l2_reg
+
+	def compute_train_loss(self, l2_reg=False, l2_reg_factor=None, add_output_summary=True):
+		if l2_reg and l2_reg_factor==None:
+			raise ValueEerror("with l2_reg=True l2_reg_factor cannot be None!")
+		if self._train_X==None or self._train_y==None:
+			raise ValueError("No training data setup!")
+		with self._graph.as_default():
+			train_X = self._train_X
+			train_y = self._train_y
+			with tf.name_scope("train_loss"):
+				cross_entropy = self.__compute_cross_entropy(train_X, train_y, is_training=True, add_output_summary)
+				if l2_reg:
+					l2_loss = l2_reg_factor * self.__compute_l2_reg()
+				train_loss = tf.reduce_mean(cross_entropy + l2_loss)
+			if add_output_summary:
+				tf.scalar_summary('train_loss', train_loss)
+			return train_loss
+
+	def compute_valid_loss(self, add_output_summary=True):
+		if self._valid_X==None or self._valid_y==None:
+			raise ValueError("No validation data setup!")
+		with self._graph.as_default():
+			valid_X = self._valid_X
+			valid_y = self._valid_y
+			with tf.name_scope("valid_loss"):
+				cross_entropy = self.__compute_cross_entropy(valid_X, valid_y, is_training=False, add_output_summary)
+				valid_loss = tf.reduce_mean(cross_entropy)
+			if add_output_summary:
+				tf.scalar_summary('valid_loss', valid_loss)
+			return valid_loss
+
+	def __compute_accuracy(self, predictions, labels):
+		correct_predictions = tf.equal(tf.argmax(predictions, 1), tf.argmax(labels, 1))
+		accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
+		return accuracy
+
+	def evaluation(self, dataset="train", add_output_summary=True):
+		#specify evaluate on "train", "valid" or "test" set
+		if dataset=="train":
+			if self._train_X==None or self._train_y==None:
+				raise ValueError("No training data setup!")
+			input_X = self._train_X
+			input_y = self._train_y
+			is_training = True
+		elif dataset=="valid":
+			if self._valid_X==None or self._valid_y==None:
+				raise ValueError("No validation data setup!")
+			input_X = self._valid_X
+			input_y = self._valid_y
+			is_training = False
+		elif dataset=="test":
+			if self._test_X==None or self._test_y==None:
+				raise ValueError("No test data setup!")
+			input_X = self._test_X
+			input_y = self._test_y
+			is_training = False
+		with self._graph.as_default():
+			with tf.name_scope(dataset+"_accuracy"):
+				logits = self.__compute_logits(input_X, is_training, add_output_summary)
+				predictions =  tf.nn.softmax(logits)
+				accuracy = self.__compute_accuracy(predictions, input_y)
+			if add_output_summary:
+				tf.scalar_summary(dataset+'_accuracy', accuracy)
+			return accuracy
+
+	def setup_learning_rate(self, init_lr, exp_decay=False, decay_steps=None, 
+							decay_rate=None, staircase=False, name=None):
+		if exp_decay and decay_steps==None and decay_rate==None:
+			raise ValueError("with exp_decay=True decay_steps and decay_rate cannot be None!")
+		with self._graph.as_default():
+			if exp_decay:
+				self._global_step = tf.Variable(0)
+				self._learning_rate = tf.train.exponential_decay(init_lr, self._global_step, 
+									  decay_steps, decay_rate, staircase, name)
+			else:
+				self._global_step = tf.Variable(0)
+				self._learning_rate = init_lr
+
+	def run_optimizer(self, optimizer, l2_reg=False, l2_reg_factor=None, add_output_summary=True):
+		train_loss = self.compute_train_loss(l2_reg, l2_reg_factor, add_output_summary)
+		with self._graph.as_default():
+			self._optimizer = optimizer(self._learning_rate).minimize(train_loss, 
+							  global_step=self._global_step)
+		return self._optimizer
+
+	def get_graph(self):
+		return self._graph
 
 
 
