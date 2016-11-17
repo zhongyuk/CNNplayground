@@ -2,6 +2,10 @@ import tensorflow as tf
 import numpy as np
 from cnn import *
 from tensorflow.python.framework import ops
+import sys
+
+sys.path.append("./capstone/code/")
+from prepare_input import *
 
 def test_conv2d(steps):
 	try:
@@ -170,6 +174,107 @@ def test_batchnorm(steps):
 		print "output", "-"*16; print y_val1
 		assert(np.array_equal(y_val1, y_val2))
 
+def prepare_data():
+	# Load Data
+    print "Load data", "."*32
+    train_dataset, train_labels, test_dataset, test_labels = load_data()
+
+    # Split 20% of training set as validation set
+    print "Split training and validation set", "."*32    
+    train_dataset, valid_dataset, train_labels, valid_labels = \
+    train_test_split(train_dataset, train_labels, test_size=5000,\
+    random_state=897, stratify=train_labels)
+    # Print out data shapes
+    print 'Dataset\t\tFeatureShape\tLabelShape'
+    print 'Training set:\t', train_dataset.shape,'\t', train_labels.shape
+    print 'Validation set:\t', valid_dataset.shape,'\t', valid_labels.shape
+    print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
+
+    # Reshape the data into pixel by pixel by RGB channels
+    print "Reformat data", "."*32
+    train_dataset = np.rollaxis(train_dataset.reshape((-1,3,32,32)), 1, 4)
+    valid_dataset = np.rollaxis(valid_dataset.reshape((-1,3,32,32)), 1, 4)
+    test_dataset = np.rollaxis(test_dataset.reshape((-1,3,32,32)), 1, 4)
+    print 'Dataset\t\tFeatureShape\t\tLabelShape'
+    print 'Training set:\t', train_dataset.shape,'\t', train_labels.shape
+    print 'Validation set:\t', valid_dataset.shape, '\t', valid_labels.shape
+    print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
+
+    # Dataset Parameters
+    image_size = 32
+    num_labels = 10
+    num_channels = 3
+
+    # Data Preprocess: change datatype; center the data
+    print "Preprocess data", "."*32
+    train_dataset, train_labels = preprocess_data(train_dataset, train_labels, num_labels)
+    valid_dataset, valid_labels = preprocess_data(valid_dataset, valid_labels, num_labels)
+    test_dataset,  test_labels  = preprocess_data(test_dataset,  test_labels,  num_labels)
+    dataset_list = [train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels]
+    return dataset_list
+
+def test_cnn_graph():
+	dataset_list = prepare_data()
+	train_dataset, train_labels = dataset_list[0], dataset_list[1]
+	valid_dataset, valid_labels = dataset_list[2], dataset_list[3]
+	test_dataset , test_labels  = dataset_list[4], dataset_list[5]
+	input_shape = [-1, 32, 32, 3]
+	batch_size = 64
+	conv_depth = 4
+	cnn_model = cnn_graph(input_shape, 10)
+	cnn_model.setup_data(batch_size, test_dataset, test_labels, valid_dataset, valid_labels)
+	# Build CNN layers
+	wt_initializer = tf.truncated_normal_initializer(stddev=.015)
+	cnn_model.add_conv2d_layer("conv1", 3, conv_depth, wt_initializer)
+	conv1_layer_shape = cnn_model.get_layers()[-1]['layer_shape']
+	assert(conv1_layer_shape == [-1, 32, 32, 4])
+	cnn_model.add_batchnorm_layer("conv1/batchnorm")
+	conv1_bn_layer = cnn_model.get_layers()[-1]
+	assert(conv1_bn_layer['layer_name']=='conv1/batchnorm')
+	assert(conv1_bn_layer['layer_shape']==[-1, 32, 32, 4])
+	cnn_model.add_act_layer("conv1/activation")
+	conv1_act_layer = cnn_model.get_layers()[-1]
+	assert(conv1_act_layer['layer_name']=='conv1/activation')
+	assert(conv1_act_layer['layer_shape']==[-1, 32, 32, 4])
+	cnn_model.add_pool_layer("conv1/pool")
+	conv1_pool_layer = cnn_model.get_layers()[-1]
+	assert(conv1_pool_layer['layer_name']=='conv1/pool')
+	assert(conv1_pool_layer['layer_shape']==[-1, 16, 16, 4])
+	cnn_model.add_conv2d_layer("conv2", 3, conv_depth, wt_initializer)
+	conv2_layer_shape = cnn_model.get_layers()[-1]['layer_shape']
+	assert(conv2_layer_shape==[-1, 16, 16, 4])
+	cnn_model.add_batchnorm_layer("conv2/batchnorm")
+	conv2_bn_layer = cnn_model.get_layers()[-1]
+	assert(conv2_bn_layer['layer_name']=='conv2/batchnorm')
+	assert(conv2_bn_layer['layer_shape']==[-1, 16, 16, 4])
+	cnn_model.add_act_layer("conv2/activation")
+	conv2_act_layer = cnn_model.get_layers()[-1]
+	assert(conv2_act_layer['layer_name']=="conv2/activation")
+	assert(conv2_act_layer['layer_shape']==[-1, 16, 16, 4])
+	cnn_model.add_pool_layer("conv2/pool")
+	conv2_pool_layer = cnn_model.get_layers()[-1]
+	assert(conv2_pool_layer['layer_name']=='conv2/pool')
+	assert(conv2_pool_layer['layer_shape']==[-1, 8, 8, 4])
+	cnn_model.add_fc_layer("fc1", 64, wt_initializer)
+	fc1_layer = cnn_model.get_layers()[-1]
+	assert(fc1_layer['layer_shape']==[-1, 64])
+	cnn_model.add_batchnorm_layer("fc1/batchnorm")
+	fc1_bn_layer = cnn_model.get_layers()[-1]
+	assert(fc1_bn_layer["layer_name"]=='fc1/batchnorm')
+	assert(fc1_bn_layer['layer_shape']==[-1, 64])
+	cnn_model.add_act_layer("fc1/activation")
+	fc1_act_layer = cnn_model.get_layers()[-1]
+	assert(fc1_act_layer['layer_name']=='fc1/activation')
+	assert(fc1_act_layer["layer_shape"]==[-1, 64])
+	cnn_model.add_fc_layer("fc2", 10, wt_initializer)
+	fc2_layer = cnn_model.get_layers()[-1]
+	assert(fc2_layer['layer_shape']==[-1, 10])
+	cnn_model.add_act_layer("fc2/activation")
+	fc2_act_layer = cnn_model.get_layers()[-1]
+	assert(fc2_act_layer['layer_name']=="fc2/activation")
+	assert(fc2_act_layer['layer_shape']==[-1, 10])
+	print "done...."
+
 
 if __name__=='__main__':
 	test_conv_bool = raw_input("Test conv2d layer? [y] or [n]")
@@ -196,4 +301,6 @@ if __name__=='__main__':
 	if test_batchnorm_bool=='y':
 		test_batchnorm(2)
 
-	#test_cnn_model()
+	test_cnn_graph_bool = raw_input("Test cnn_graph? [y] or [n]")
+	if test_cnn_graph_bool=='y':
+		test_cnn_graph()

@@ -409,6 +409,7 @@ class cnn_graph(object):
 	FULLNAME = 'Convolutional Neural Network Model'
 
 	def __init__(self, input_shape, num_class):
+		# for input_shape, the first dimension doesn't matter much...
 		# input_shape = [-1, image_size, image_size, image_channels]
 		self._graph = tf.Graph()
 		self._input_shape = input_shape
@@ -421,18 +422,19 @@ class cnn_graph(object):
 		return self._all_layers
 
 	def setup_data(self, batch_size, test_X, test_y, valid_X=None, valid_y=None):
+		#test_X, test_y, valid_X, valid_y are numpy arrays, batch_size is python int
 		with self._graph.as_default():
 			with tf.name_scope('train_data'):
 				train_X_shape = list(self._input_shape)
 				train_X_shape[0] = batch_size
 				self._train_X = tf.placeholder(tf.float32, shape=train_X_shape, name='train_X')
-				self._train_y = tf.placeholder(tf.float32, shape=(self._batch_size, self._num_class), name='train_y')
+				self._train_y = tf.placeholder(tf.float32, shape=(batch_size, self._num_class), name='train_y')
 
 			with tf.name_scope('test_data'):
 				self._test_X = tf.constant(test_X, name='test_X')
 				self._test_y = tf.constant(test_y, name='test_y')
 
-			if (valid_X != None) and (valid_y != None):
+			if (valid_X is not None) and (valid_y is not None):
 				with tf.name_scope('valid_data'):
 					self._valid_X = tf.constant(valid_X, name='valid_X')
 					self._valid_y = tf.constant(valid_y, name='valid_y')
@@ -450,9 +452,9 @@ class cnn_graph(object):
 			conv_layer.initialize(wt_initializer=wt_initializer, bi_initializer=bi_initializer)
 			conv_layer.add_variable_summaries()
 			if padding=='SAME':
-				spacial_length = prev_layer_shape[1]
+				spacial_length = prev_layer_shape[1]//stride
 			elif padding=='VALID':
-				spacial_length = (prev_layer_shape[1] - filter_size)//stride + 1
+				spacial_length = (prev_layer_shape[1] - filter_size + 1)//stride 
 			output_layer_shape = [prev_layer_shape[0], spacial_length, spacial_length, depth]
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
@@ -470,7 +472,7 @@ class cnn_graph(object):
 		wt_shape = [in_shape, out_shape]
 		with self._graph.as_default():
 			fc_layer = fc(layer_name, wt_shape)
-			fc_layer.initializer(wt_initializer=wt_initializer, bi_initializer=bi_initializer)
+			fc_layer.initialize(wt_initializer=wt_initializer, bi_initializer=bi_initializer)
 			fc_layer.add_variable_summaries()
 			output_layer_shape = [prev_layer_shape[0], out_shape]
 			self._all_layers.append({'layer_name'   : layer_name,
@@ -488,9 +490,9 @@ class cnn_graph(object):
 			strides = [1, stride, stride, 1]
 			pool_layer = pool2d(layer_name, pool_func, ksize, strides, padding)
 			if padding=='SAME':
-				spacial_length = prev_layer_shape[1]//stride + 1
+				spacial_length = prev_layer_shape[1]//stride 
 			elif padding=='VALID':
-				spacial_length = (prev_layer_shape[1] - kernel_size)//stride + 1
+				spacial_length = (prev_layer_shape[1] - kernel_size + 1)//stride 
 			output_layer_shape = [prev_layer_shape[0], spacial_length, spacial_length, prev_layer_shape[-1]]
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
@@ -520,12 +522,13 @@ class cnn_graph(object):
 									 'layer_shape'  : output_layer_shape,
 									 'layer_obj'    : act_layer})
 
-	def add_batchnorm_layer(self, layer_name, depth, center=True,
+	def add_batchnorm_layer(self, layer_name, center=True,
 						    scale=True, decay=.9):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
 		if layer_name in all_layer_names:
 			raise ValueError("layer_name already exists. Please use a different layer name!")
 		prev_layer_shape = self._all_layers[-1]['layer_shape']
+		depth = prev_layer_shape[-1]
 		with self._graph.as_default():
 			depth = prev_layer_shape[-1]
 			batchnorm_layer = batchnorm(layer_name, depth, center=center, scale=scale, decay=decay)
@@ -555,22 +558,22 @@ class cnn_graph(object):
 	def __compute_l2_reg(self):
 		l2_reg = 0
 		for layer_dict in self._all_layers[1:]:
-			layer_obj = layer_dict['layer_obj']:
+			layer_obj = layer_dict['layer_obj']
 			if layer_obj.get_layer_type()=='Fully Connected Layer':
 				wt, bi = layer_obj.get_variables()
 				l2_reg += tf.nn.l2_loss(wt) + tf.nn.l2_loss(bi)
 		return l2_reg
 
 	def compute_train_loss(self, l2_reg=False, l2_reg_factor=None, add_output_summary=True):
-		if l2_reg and l2_reg_factor==None:
+		if l2_reg and (l2_reg_factor is None):
 			raise ValueEerror("with l2_reg=True l2_reg_factor cannot be None!")
-		if self._train_X==None or self._train_y==None:
+		if (self._train_X is None) or (self._train_y is None):
 			raise ValueError("No training data setup!")
 		with self._graph.as_default():
 			train_X = self._train_X
 			train_y = self._train_y
 			with tf.name_scope("train_loss"):
-				cross_entropy = self.__compute_cross_entropy(train_X, train_y, is_training=True, add_output_summary)
+				cross_entropy = self.__compute_cross_entropy(train_X, train_y, True, add_output_summary)
 				if l2_reg:
 					l2_loss = l2_reg_factor * self.__compute_l2_reg()
 				train_loss = tf.reduce_mean(cross_entropy + l2_loss)
@@ -579,13 +582,13 @@ class cnn_graph(object):
 			return train_loss
 
 	def compute_valid_loss(self, add_output_summary=True):
-		if self._valid_X==None or self._valid_y==None:
+		if (self._valid_X is None) or (self._valid_y is None):
 			raise ValueError("No validation data setup!")
 		with self._graph.as_default():
 			valid_X = self._valid_X
 			valid_y = self._valid_y
 			with tf.name_scope("valid_loss"):
-				cross_entropy = self.__compute_cross_entropy(valid_X, valid_y, is_training=False, add_output_summary)
+				cross_entropy = self.__compute_cross_entropy(valid_X, valid_y, False, add_output_summary)
 				valid_loss = tf.reduce_mean(cross_entropy)
 			if add_output_summary:
 				tf.scalar_summary('valid_loss', valid_loss)
@@ -599,19 +602,19 @@ class cnn_graph(object):
 	def evaluation(self, dataset="train", add_output_summary=True):
 		#specify evaluate on "train", "valid" or "test" set
 		if dataset=="train":
-			if self._train_X==None or self._train_y==None:
+			if (self._train_X is None) or (self._train_y is None):
 				raise ValueError("No training data setup!")
 			input_X = self._train_X
 			input_y = self._train_y
 			is_training = True
 		elif dataset=="valid":
-			if self._valid_X==None or self._valid_y==None:
+			if (self._valid_X is None) or (self._valid_y is None):
 				raise ValueError("No validation data setup!")
 			input_X = self._valid_X
 			input_y = self._valid_y
 			is_training = False
 		elif dataset=="test":
-			if self._test_X==None or self._test_y==None:
+			if (self._test_X is None) or (self._test_y is None):
 				raise ValueError("No test data setup!")
 			input_X = self._test_X
 			input_y = self._test_y
