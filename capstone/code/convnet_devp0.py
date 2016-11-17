@@ -20,8 +20,8 @@ def count_correct(pred, labels):
 
 def load_data():
     # Load training and testing data
-    train_fnroot = 'cifar-10-batches-py/data_batch_'
-    test_filename = 'cifar-10-batches-py/test_batch'
+    train_fnroot = '../../cifar10_data/data_batch_'
+    test_filename = '../../cifar10_data/test_batch'
     train_dataset = None
     test_dataset = None
     print "Loading the training data..."

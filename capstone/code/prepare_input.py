@@ -2,8 +2,6 @@ import numpy as np
 import tensorflow as tf
 from six.moves import cPickle as pickle
 from sklearn.model_selection import train_test_split
-import sys
-sys.path.append("../../")
 
 
 def unpickle(file):
@@ -27,10 +25,10 @@ def generate_batch(features, labels, batch_size):
     feature_batch, label_batch = features[start:start+batch_size,:,:,:], labels[start:start+batch_size,:]
     return feature_batch, label_batch
 
-def load_data():
+def load_data(data_dir):
     # Load training and testing data
-    train_fnroot = 'cifar10_data/data_batch_'
-    test_filename = 'cifar10_data/test_batch'
+    train_fnroot = data_dir+'cifar10_data/data_batch_'
+    test_filename = data_dir+'cifar10_data/test_batch'
     train_dataset = None
     test_dataset = None
     print "Loading the training data..."

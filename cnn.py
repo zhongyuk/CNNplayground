@@ -360,11 +360,11 @@ class batchnorm(layer):
 	def initialize(self):
 		with tf.variable_scope(self._layer_name, reuse=None) as scope:
 			if self._center:
-				beta = tf.get_variable("offset_factor", self._depth, 
+				beta = tf.get_variable("beta", self._depth, 
 					    initializer=tf.constant_initializer(0.0),
 						trainable=True)
 			if self._scale:
-				gamma = tf.get_variable("scale_factor", self._depth, 
+				gamma = tf.get_variable("gamma", self._depth, 
 						initializer=tf.constant_initializer(1.0),
 						trainable=True)
 			moving_avg = tf.get_variable("moving_mean", self._depth,
@@ -378,9 +378,9 @@ class batchnorm(layer):
 	def get_variables(self):
 		with tf.variable_scope(self._layer_name, reuse=True) as scope:
 			if self._center:
-				beta = tf.get_variable("offset_factor")
+				beta = tf.get_variable("beta")
 			if self._scale:
-				gamma = tf.get_variable("scale_factor")
+				gamma = tf.get_variable("gamma")
 			moving_avg = tf.get_variable("moving_mean")
 			moving_var = tf.get_variable("moving_variance")
 			return beta, gamma, moving_avg, moving_var
@@ -388,9 +388,9 @@ class batchnorm(layer):
 	def add_variable_summaries(self):
 		with tf.variable_scope(self._layer_name, reuse=True):
 			if self._scale:
-				self.variable_summaries(tf.get_variable("scale_factor"), self._layer_name+'/scale_factors')
+				self.variable_summaries(tf.get_variable("gamma"), self._layer_name+'/scale_factors')
 			if self._center:
-				self.variable_summaries(tf.get_variable("offset_factor"), self._layer_name+'/offset_factors')
+				self.variable_summaries(tf.get_variable("beta"), self._layer_name+'/offset_factors')
 			self.variable_summaries(tf.get_variable("moving_mean"), self._layer_name+'/moving_means')
 			self.variable_summaries(tf.get_variable("moving_variance"), self._layer_name+'/moving_variances')
 

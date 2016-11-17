@@ -218,7 +218,8 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
 if __name__=='__main__':
     # Load Data
     print "Load data", "."*32
-    train_dataset, train_labels, test_dataset, test_labels = load_data()
+    data_dir = "../../"
+    train_dataset, train_labels, test_dataset, test_labels = load_data(data_dir)
 
     # Split 20% of training set as validation set
     print "Split training and validation set", "."*32    
