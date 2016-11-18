@@ -156,10 +156,10 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
             l2_reg_loss += tf.nn.l2_loss(tf.get_variable('wt')) + tf.nn.l2_loss(tf.get_variable('bi'))
         with tf.variable_scope('fc2', reuse=True):
             l2_reg_loss += tf.nn.l2_loss(tf.get_variable('wt')) + tf.nn.l2_loss(tf.get_variable('bi'))
-        #train_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(train_logits, tf_train_labels) + l2_reg*l2_reg_loss)
+        train_loss_l2 = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(train_logits, tf_train_labels) + l2_reg*l2_reg_loss)
         train_prediction = tf.nn.softmax(train_logits)
         # Optimizer
-        optimizer = tfoptimizer(learning_rate).minimize(train_loss, global_step=global_step)
+        optimizer = tfoptimizer(learning_rate).minimize(train_loss_l2, global_step=global_step)
 
         valid_logits = model(tf_valid_dataset, scopes, False, keep_prob, batch_norm)
         valid_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(valid_logits,tf_valid_labels))
