@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from six.moves import cPickle as pickle
-from sklearn.model_selection import train_test_split
 
 
 def unpickle(file):
