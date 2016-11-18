@@ -308,7 +308,7 @@ class dropout(layer):
 
 	def __init__(self, layer_name, keep_prob):
 		self._layer_name = layer_name
-		self._keep_prob = keep_prob
+		self._keep_prob = keep_prob # placeholder
 
 	def get_layer_name(self):
 		return self._layer_name
@@ -319,18 +319,9 @@ class dropout(layer):
 	def is_trainable(self):
 		return dropout.TRAINABLE
 
-	def get_keep_prob(self):
-		return self._keep_prob
-
-	def set_keep_prob(self, keep_prob):
-		self._keep_prob = keep_prob
-
-	def train(self, input, is_training, add_output_summary=True):
+	def train(self, input, add_output_summary=True):
 		with tf.name_scope(self._layer_name):
-			if is_training:
-				output = tf.nn.dropout(input, self._keep_prob)
-			else:
-				output = input
+			output = tf.nn.dropout(input, self._keep_prob)
 			if add_output_summary:
 				tf.histogram_summary(self._layer_name, output)
 			return output

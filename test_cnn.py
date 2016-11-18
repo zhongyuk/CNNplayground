@@ -107,13 +107,11 @@ def test_pool2d(steps):
 
 def test_dropout(steps):
 	sess = tf.InteractiveSession()
-	dropout1 = dropout('dropout1', 0.5)
+	keep_prob = tf.placeholder(tf.float32)
+	dropout1 = dropout('dropout1', keep_prob)
 	assert(dropout1.get_layer_name()=='dropout1')
 	assert(dropout1.get_layer_type()=='Dropout Layer')
 	assert(dropout1.is_trainable()==False)
-	assert(dropout1.get_keep_prob()==0.5)
-	dropout1.set_keep_prob(.7)
-	assert(dropout1.get_keep_prob()==.7)
 
 	input = tf.placeholder(tf.float32, [5, 2])
 	for i in range(steps):
@@ -121,8 +119,9 @@ def test_dropout(steps):
 		print "*"*16, i, "*"*16
 		print X_np
 		print '-'*32
-		y = dropout1.train(input, True)
-		print y.eval(feed_dict={input : X_np})
+		y = dropout1.train(input)
+		print y.eval(feed_dict={input : X_np, keep_prob : .5})
+
 
 def test_batchnorm(steps):
 	sess = tf.InteractiveSession()

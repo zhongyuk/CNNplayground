@@ -82,17 +82,17 @@ def conv(x, scope, train, batch_norm):
     x = pool_layer(x, "max")
     return x
 
-def fc(x, scope, train, batch_norm, dropout, keep_prob=.5):
+def fc(x, scope, batch_norm, train, dropout, keep_prob=None):
     x = full_layer(x, scope)
     if batch_norm:
         #x = tf.contrib.layers.batch_norm(x, is_training=train, scope=scope, reuse=True)
         x = BatchNorm_layer(x, scope, train)
     x = tf.nn.relu(x)
-    if train and dropout:
+    if dropout:
         x = tf.nn.dropout(x, keep_prob)
     return x
 
-def convnet_stack(data, scopes, train=True, keep_prob=.5, batch_norm=False):
+def convnet_stack(data, scopes, keep_prob, train=True, batch_norm=False):
     # Linearly Stacked CNN
     x = data
     # CONV Layers 1~3
@@ -101,12 +101,12 @@ def convnet_stack(data, scopes, train=True, keep_prob=.5, batch_norm=False):
     # FC Layer 4
     shape = x.get_shape().as_list()
     x = tf.reshape(x, [shape[0], -1])
-    x = fc(x, scopes[3], train, batch_norm, True, keep_prob)
-    # FC Layer 5 - Output layer, no need BatchNorm
-    x = fc(x, scopes[4], train, batch_norm, False)
+    x = fc(x, scopes[3], batch_norm, train, True, keep_prob)
+    # FC Layer 5 - Output layer - no dropout
+    x = fc(x, scopes[4], batch_norm, train, False)
     return x
 
-def convnet_inception(data, scopes, train=True, keep_prob=.5, batch_norm=False):
+def convnet_inception(data, scopes, keep_prob, train=True, batch_norm=False):
     x = data
     # Layer1 - shared conv layer
     x = conv(x, scope[0], train, batch_norm)
@@ -120,9 +120,9 @@ def convnet_inception(data, scopes, train=True, keep_prob=.5, batch_norm=False):
     # Layer4 - Fully connected layer1
     shape = x_pool.get_shape().as_list()
     x = tf.reshape(x_pool, [shape[0], -1])
-    x = fc(x, scope[3], train, batch_norm, True, keep_prob)
+    x = fc(x, scope[3], batch_norm, train, True, keep_prob)
     # Layer5 - Fully connected layer2 - output layer
-    x = fc(x, scope[4], train, batch_norm, False)
+    x = fc(x, scope[4], batch_norm, train, False)
     return x
 
 
@@ -141,13 +141,13 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
 
         # Unwrap HyperParameters
         l2_reg = hyperparams['l2_reg'] # regularization penality factor
-        keep_prob, tfoptimizer = hyperparams['keep_prob'], hyperparams['optimizer']
+        tf_keep_prob, tfoptimizer = tf.placeholder(tf.float32), hyperparams['optimizer']
         init_lr,  global_step = hyperparams['init_lr'], tf.Variable(0)
         decay_steps, decay_rate = hyperparams['decay_steps'], hyperparams['decay_rate']
         learning_rate = tf.train.exponential_decay(init_lr, global_step, decay_steps, decay_rate, staircase=True)
         
         # Compute Loss Function and Predictions
-        train_logits = model(tf_train_dataset, scopes, True, keep_prob, batch_norm)
+        train_logits = model(tf_train_dataset, scopes, tf_keep_prob, True, batch_norm)
         # Without regularization
         train_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(train_logits, tf_train_labels))
         # With L2 regularization applied to fully connected layers
@@ -161,11 +161,11 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
         # Optimizer
         optimizer = tfoptimizer(learning_rate).minimize(train_loss_l2, global_step=global_step)
 
-        valid_logits = model(tf_valid_dataset, scopes, False, keep_prob, batch_norm)
+        valid_logits = model(tf_valid_dataset, scopes, tf_keep_prob, False, batch_norm)
         valid_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(valid_logits,tf_valid_labels))
         valid_prediction = tf.nn.softmax(valid_logits)
         if tf_test_dataset!=None:
-            test_prediction = tf.nn.softmax(model(tf_test_dataset, scopes, False, keep_prob, batch_norm))
+            test_prediction = tf.nn.softmax(model(tf_test_dataset, scopes, tf_keep_prob, False, batch_norm))
         else:
             test_prediction = None
     
@@ -173,6 +173,7 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
     num_steps = epoches
     train_losses, valid_losses = np.zeros(num_steps), np.zeros(num_steps)
     train_acc, valid_acc = np.zeros(num_steps), np.zeros(num_steps)
+    keep_prob = hyperparams['keep_prob']
     
     print "Start training", '.'*32
     with tf.Session(graph=graph) as session:
@@ -186,25 +187,25 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
                 #offset = np.random.randint(train_labels.shape[0] - batch_size)
                 batch_data = train_dataset[offset:(offset+batch_size), :, :, :]
                 batch_labels = train_labels[offset:(offset+batch_size), :]
-                feed_dict = {tf_train_dataset:batch_data, tf_train_labels:batch_labels}
+                feed_dict = {tf_train_dataset:batch_data, tf_train_labels:batch_labels, tf_keep_prob:keep_prob}
             else:
-                feed_dict = {}
+                feed_dict = {tf_keep_prob:keep_prob}
             # Run session...
             _, tl, predictions = session.run([optimizer, train_loss, train_prediction], feed_dict=feed_dict)
             train_losses[step] = tl
             if minibatch:
                 train_acc[step] = accuracy(predictions, batch_labels)
             else:
-                train_acc[step] = accuracy(predictions, tf_train_labels.eval())
+                train_acc[step] = accuracy(predictions, tf_train_labels.eval(feed_dict={tf_keep_prob:1.0}))
             # Compute validation set accuracy
-            valid_losses[step] = valid_loss.eval()
-            valid_acc[step] = accuracy(valid_prediction.eval(), tf_valid_labels.eval())
+            valid_losses[step] = valid_loss.eval(feed_dict={tf_keep_prob:1.0})
+            valid_acc[step] = accuracy(valid_prediction.eval(feed_dict={tf_keep_prob:1.0}), tf_valid_labels.eval())
             print('Epoch: %d:\tLoss: %f\t\tTime cost: %1.f\t\tTrain Acc: %.2f%%\tValid Acc: %2.f%%\tLearning rate: %.6f' \
                 %(step, tl, (time.time()-t), (train_acc[step]*100), (valid_acc[step]*100),learning_rate.eval(),))
         print "Finished training", '.'*32
         # Compute test set accuracy
         if test_prediction!=None:
-            test_acc = accuracy(test_prediction.eval(), tf_test_labels.eval())
+            test_acc = accuracy(test_prediction.eval(feed_dict={tf_keep_prob:1.0}), tf_test_labels.eval())
             print("Test accuracy: %2.f%%" %(test_acc*100))
         else:
             test_acc = None
@@ -266,10 +267,10 @@ if __name__=='__main__':
     print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
     
     # Network parameters
-    batch_size = 128
+    batch_size = 512
     kernel_size3 = 3
     kernel_size5 = 5
-    num_filter = 64
+    num_filter = 16
     fc_size1 = 512
 
     # Setup shapes for each layer in the convnet
@@ -289,12 +290,12 @@ if __name__=='__main__':
         tfoptimizer = tf.train.AdamOptimizer
 
     # HyperParameters
-    hyperparams = {'keep_prob': 0.47, 'init_lr': 0.002, 'decay_rate': .9, 'decay_steps': 100,
+    hyperparams = {'keep_prob': 0.33, 'init_lr': 0.002, 'decay_rate': .9, 'decay_steps': 100,
                    'optimizer': tfoptimizer, 'l2_reg': 0.096, 'batch_norm': True,
                    'initializer': tf.truncated_normal_initializer(stddev=.015)} #tf.contrib.layers.variance_scaling_initializer()}
 
     # Setup computation graph and train convnet
-    steps = 31
+    steps = 2501
     model, save_data_name = convnet_stack, 'training_data_stack3.1'
     #model, save_data_name = convnet_inception, 'training_data_inception'
     _, training_data = train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, \
