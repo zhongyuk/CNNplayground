@@ -588,7 +588,7 @@ class cnn_graph(object):
 			valid_X = self._valid_X
 			valid_y = self._valid_y
 			with tf.name_scope("valid_loss"):
-				cross_entropy = self.__compute_cross_entropy(valid_X, valid_y, False, add_output_summary)
+				cross_entropy = self.__compute_cross_entropy(valid_X, valid_y, False, add_output_summary=False)
 				valid_loss = tf.reduce_mean(cross_entropy)
 			if add_output_summary:
 				tf.scalar_summary('valid_loss', valid_loss)
@@ -623,7 +623,7 @@ class cnn_graph(object):
 			raise ValueError("dataset has to be 'train', 'valid', or 'test'!")
 		with self._graph.as_default():
 			with tf.name_scope(dataset+"_accuracy"):
-				logits = self.__compute_logits(input_X, is_training, add_output_summary)
+				logits = self.__compute_logits(input_X, is_training, add_output_summary=False)
 				predictions =  tf.nn.softmax(logits)
 				accuracy = self.__compute_accuracy(predictions, input_y)
 			if add_output_summary:
@@ -649,6 +649,11 @@ class cnn_graph(object):
 			self._optimizer = optimizer(self._learning_rate).minimize(train_loss, 
 							  global_step=self._global_step)
 		return self._optimizer
+
+	def merge_summaries(self):
+		with self._graph.as_default():
+			merged = tf.merge_all_summaries()
+  			return merged
 
 	def get_graph(self):
 		return self._graph

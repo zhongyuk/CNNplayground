@@ -281,7 +281,7 @@ def test_cnn_graph(steps):
 
 	cnn_model.setup_learning_rate(0.0003)
 
-	train_loss = cnn_model.compute_train_loss()
+	train_loss = cnn_model.compute_train_loss(add_output_summary=False)
 	valid_loss = cnn_model.compute_valid_loss()
 
 	train_accuracy = cnn_model.evaluation("train")
@@ -289,8 +289,14 @@ def test_cnn_graph(steps):
 	test_accuracy = cnn_model.evaluation("test")
 
 	optimizer = cnn_model.setup_optimizer(tf.train.AdamOptimizer)
+	merged_summary = cnn_model.merge_summaries()
 	graph = cnn_model.get_graph()
+
 	with tf.Session(graph=graph) as sess:
+		print("Create summary writers")
+		train_writer = tf.train.SummaryWriter('tmp/' + '/train', graph=sess.graph)
+  		valid_writer = tf.train.SummaryWriter('tmp/' + '/valid')
+		
 		tf.initialize_all_variables().run()
 		print("Initialized")
 		for step in range(steps):
@@ -300,8 +306,14 @@ def test_cnn_graph(steps):
 			feed_dict = {cnn_model.train_X : batch_X, 
 						cnn_model.train_y : batch_y,
 						cnn_model.keep_prob : 0.5}
-			_, tloss, tacc = sess.run([optimizer, train_loss, train_accuracy], feed_dict=feed_dict)
-			vacc = sess.run(valid_accuracy, feed_dict={cnn_model.keep_prob : 1.0})
+			_, tloss, tacc, tmrg_summ = sess.run([optimizer, train_loss, train_accuracy,\
+			 						    merged_summary], feed_dict=feed_dict)
+			train_writer.add_summary(tmrg_summ, step)
+			vacc, vmrg_summ = sess.run([valid_accuracy, merged_summary], \
+							  feed_dict={cnn_model.train_X : batch_X,
+							  			 cnn_model.train_y : batch_y,
+							  			 cnn_model.keep_prob : 1.0})
+			valid_writer.add_summary(vmrg_summ, step)
 			print('Epoch: %d:\tLoss: %f\t\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                  %(step, tloss, (tacc*100), (vacc*100)))
 		tacc = sess.run(test_accuracy, feed_dict={cnn_model.keep_prob : 1.0})
