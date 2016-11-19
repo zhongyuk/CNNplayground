@@ -306,9 +306,9 @@ class dropout(layer):
 	TRAINABLE = False
 	FULLNAME = "Dropout Layer"
 
-	def __init__(self, layer_name, keep_prob):
+	def __init__(self, layer_name):
 		self._layer_name = layer_name
-		self._keep_prob = keep_prob # placeholder
+		self.keep_prob = tf.placeholder(tf.float32)
 
 	def get_layer_name(self):
 		return self._layer_name
@@ -321,7 +321,7 @@ class dropout(layer):
 
 	def train(self, input, add_output_summary=True):
 		with tf.name_scope(self._layer_name):
-			output = tf.nn.dropout(input, self._keep_prob)
+			output = tf.nn.dropout(input, self.keep_prob)
 			if add_output_summary:
 				tf.histogram_summary(self._layer_name, output)
 			return output
@@ -405,6 +405,10 @@ class cnn_graph(object):
 		self._graph = tf.Graph()
 		self._input_shape = input_shape
 		self._num_class = num_class
+		# placeholders for mini_batch training and dropout keep_prob
+		self.train_X = None
+		self.train_y = None
+		self.keep_prob = None
 		self._all_layers = [{'layer_name'   : 'input_layer',
 							 'layer_shape'  : input_shape,
 							 'layer_obj'    : None}] # as a linked list
@@ -418,8 +422,8 @@ class cnn_graph(object):
 			with tf.name_scope('train_data'):
 				train_X_shape = list(self._input_shape)
 				train_X_shape[0] = batch_size
-				self._train_X = tf.placeholder(tf.float32, shape=train_X_shape, name='train_X')
-				self._train_y = tf.placeholder(tf.float32, shape=(batch_size, self._num_class), name='train_y')
+				self.train_X = tf.placeholder(tf.float32, shape=train_X_shape, name='train_X')
+				self.train_y = tf.placeholder(tf.float32, shape=(batch_size, self._num_class), name='train_y')
 
 			with tf.name_scope('test_data'):
 				self._test_X = tf.constant(test_X, name='test_X')
@@ -489,13 +493,15 @@ class cnn_graph(object):
 									 'layer_shape'  : output_layer_shape,
 									 'layer_obj'    : pool_layer})
 
-	def add_dropout_layer(self, layer_name, keep_prob):
+	def add_dropout_layer(self, layer_name):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
 		if layer_name in all_layer_names:
 			raise ValueError("layer_name already exists. Please use a different layer name!")
 		prev_layer_shape = self._all_layers[-1]['layer_shape']
 		with self._graph.as_default():
-			dropout_layer = dropout(layer_name, keep_prob)
+			dropout_layer = dropout(layer_name)
+			if self.keep_prob is None:
+				self.keep_prob = dropout_layer.keep_prob
 			output_layer_shape = list(prev_layer_shape)
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
@@ -534,16 +540,19 @@ class cnn_graph(object):
 		for layer_dict in self._all_layers[1:]:
 			layer_obj = layer_dict['layer_obj']
 			layer_type = layer_obj.get_layer_type()
-			if layer_type in ['Dropout Layer', 'Batch Normalization Layer']:
+			if layer_type =='Batch Normalization Layer':
 				input_X = layer_obj.train(input_X, is_training, add_output_summary)
 			else:
+				if layer_type=='Fully Connected Layer' and tf.rank(input_X)!=2:
+					shape = input_X.get_shape().as_list()
+					input_X = tf.reshape(input_X, [shape[0], -1])
 				input_X = layer_obj.train(input_X, add_output_summary)
 		logits = input_X
 		return logits
 
 	def __compute_cross_entropy(self, input_X, input_y, is_training, add_output_summary):
 		logits = self.__compute_logits(input_X, is_training, add_output_summary)
-		cross_entropy = tf.nn.softmax_cross_entropy_with_logits(input_X, input_y)
+		cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, input_y)
 		return cross_entropy
 
 	def __compute_l2_reg(self):
@@ -558,15 +567,15 @@ class cnn_graph(object):
 	def compute_train_loss(self, l2_reg=False, l2_reg_factor=None, add_output_summary=True):
 		if l2_reg and (l2_reg_factor is None):
 			raise ValueEerror("with l2_reg=True l2_reg_factor cannot be None!")
-		if (self._train_X is None) or (self._train_y is None):
+		if (self.train_X is None) or (self.train_y is None):
 			raise ValueError("No training data setup!")
 		with self._graph.as_default():
-			train_X = self._train_X
-			train_y = self._train_y
 			with tf.name_scope("train_loss"):
-				cross_entropy = self.__compute_cross_entropy(train_X, train_y, True, add_output_summary)
+				cross_entropy = self.__compute_cross_entropy(self.train_X, self.train_y, True, add_output_summary)
 				if l2_reg:
 					l2_loss = l2_reg_factor * self.__compute_l2_reg()
+				else:
+					l2_loss = 0
 				train_loss = tf.reduce_mean(cross_entropy + l2_loss)
 			if add_output_summary:
 				tf.scalar_summary('train_loss', train_loss)
@@ -593,10 +602,10 @@ class cnn_graph(object):
 	def evaluation(self, dataset="train", add_output_summary=True):
 		#specify evaluate on "train", "valid" or "test" set
 		if dataset=="train":
-			if (self._train_X is None) or (self._train_y is None):
+			if (self.train_X is None) or (self.train_y is None):
 				raise ValueError("No training data setup!")
-			input_X = self._train_X
-			input_y = self._train_y
+			input_X = self.train_X
+			input_y = self.train_y
 			is_training = True
 		elif dataset=="valid":
 			if (self._valid_X is None) or (self._valid_y is None):
@@ -610,6 +619,8 @@ class cnn_graph(object):
 			input_X = self._test_X
 			input_y = self._test_y
 			is_training = False
+		else:
+			raise ValueError("dataset has to be 'train', 'valid', or 'test'!")
 		with self._graph.as_default():
 			with tf.name_scope(dataset+"_accuracy"):
 				logits = self.__compute_logits(input_X, is_training, add_output_summary)
@@ -632,7 +643,7 @@ class cnn_graph(object):
 				self._global_step = tf.Variable(0)
 				self._learning_rate = init_lr
 
-	def run_optimizer(self, optimizer, l2_reg=False, l2_reg_factor=None, add_output_summary=True):
+	def setup_optimizer(self, optimizer, l2_reg=False, l2_reg_factor=None, add_output_summary=True):
 		train_loss = self.compute_train_loss(l2_reg, l2_reg_factor, add_output_summary)
 		with self._graph.as_default():
 			self._optimizer = optimizer(self._learning_rate).minimize(train_loss, 
@@ -641,8 +652,6 @@ class cnn_graph(object):
 
 	def get_graph(self):
 		return self._graph
-
-
 
 
 if __name__=='__main__':

@@ -3,6 +3,7 @@ import numpy as np
 from cnn import *
 from tensorflow.python.framework import ops
 import sys
+from sklearn.model_selection import train_test_split
 
 sys.path.append("./capstone/code/")
 from prepare_input import *
@@ -107,8 +108,7 @@ def test_pool2d(steps):
 
 def test_dropout(steps):
 	sess = tf.InteractiveSession()
-	keep_prob = tf.placeholder(tf.float32)
-	dropout1 = dropout('dropout1', keep_prob)
+	dropout1 = dropout('dropout1')
 	assert(dropout1.get_layer_name()=='dropout1')
 	assert(dropout1.get_layer_type()=='Dropout Layer')
 	assert(dropout1.is_trainable()==False)
@@ -120,7 +120,7 @@ def test_dropout(steps):
 		print X_np
 		print '-'*32
 		y = dropout1.train(input)
-		print y.eval(feed_dict={input : X_np, keep_prob : .5})
+		print y.eval(feed_dict={input : X_np, dropout1.keep_prob : .5})
 
 
 def test_batchnorm(steps):
@@ -173,10 +173,11 @@ def test_batchnorm(steps):
 		print "output", "-"*16; print y_val1
 		assert(np.array_equal(y_val1, y_val2))
 
-def prepare_data():
+def prepare_cifar10_data():
 	# Load Data
     print "Load data", "."*32
-    train_dataset, train_labels, test_dataset, test_labels = load_data()
+    data_dir = './'
+    train_dataset, train_labels, test_dataset, test_labels = load_data(data_dir)
 
     # Split 20% of training set as validation set
     print "Split training and validation set", "."*32    
@@ -212,13 +213,13 @@ def prepare_data():
     dataset_list = [train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels]
     return dataset_list
 
-def test_cnn_graph():
-	dataset_list = prepare_data()
+def test_cnn_graph(steps):
+	dataset_list = prepare_cifar10_data()
 	train_dataset, train_labels = dataset_list[0], dataset_list[1]
 	valid_dataset, valid_labels = dataset_list[2], dataset_list[3]
 	test_dataset , test_labels  = dataset_list[4], dataset_list[5]
 	input_shape = [-1, 32, 32, 3]
-	batch_size = 64
+	batch_size = 32
 	conv_depth = 4
 	cnn_model = cnn_graph(input_shape, 10)
 	cnn_model.setup_data(batch_size, test_dataset, test_labels, valid_dataset, valid_labels)
@@ -265,6 +266,10 @@ def test_cnn_graph():
 	fc1_act_layer = cnn_model.get_layers()[-1]
 	assert(fc1_act_layer['layer_name']=='fc1/activation')
 	assert(fc1_act_layer["layer_shape"]==[-1, 64])
+	cnn_model.add_dropout_layer("fc1/dropout")
+	fc1_dropout_layer = cnn_model.get_layers()[-1]
+	assert(fc1_dropout_layer['layer_name']=='fc1/dropout')
+	assert(fc1_dropout_layer['layer_shape']==[-1, 64])
 	cnn_model.add_fc_layer("fc2", 10, wt_initializer)
 	fc2_layer = cnn_model.get_layers()[-1]
 	assert(fc2_layer['layer_shape']==[-1, 10])
@@ -272,7 +277,36 @@ def test_cnn_graph():
 	fc2_act_layer = cnn_model.get_layers()[-1]
 	assert(fc2_act_layer['layer_name']=="fc2/activation")
 	assert(fc2_act_layer['layer_shape']==[-1, 10])
-	print "done...."
+	print "done building up network..."
+
+	cnn_model.setup_learning_rate(0.0003)
+
+	train_loss = cnn_model.compute_train_loss()
+	valid_loss = cnn_model.compute_valid_loss()
+
+	train_accuracy = cnn_model.evaluation("train")
+	valid_accuracy = cnn_model.evaluation("valid")
+	test_accuracy = cnn_model.evaluation("test")
+
+	optimizer = cnn_model.setup_optimizer(tf.train.AdamOptimizer)
+	graph = cnn_model.get_graph()
+	with tf.Session(graph=graph) as sess:
+		tf.initialize_all_variables().run()
+		print("Initialized")
+		for step in range(steps):
+			offset = (step*batch_size)%(train_labels.shape[0]-batch_size)
+			batch_X = train_dataset[offset:(offset+batch_size), :]
+			batch_y = train_labels[offset:(offset+batch_size), :]
+			feed_dict = {cnn_model.train_X : batch_X, 
+						cnn_model.train_y : batch_y,
+						cnn_model.keep_prob : 0.5}
+			_, tloss, tacc = sess.run([optimizer, train_loss, train_accuracy], feed_dict=feed_dict)
+			vacc = sess.run(valid_accuracy, feed_dict={cnn_model.keep_prob : 1.0})
+			print('Epoch: %d:\tLoss: %f\t\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
+                 %(step, tloss, (tacc*100), (vacc*100)))
+		tacc = sess.run(test_accuracy, feed_dict={cnn_model.keep_prob : 1.0})
+		print("Finished training")
+		print("Test accuracy: %.2f%%" %(tacc*100))
 
 
 if __name__=='__main__':
@@ -302,4 +336,5 @@ if __name__=='__main__':
 
 	test_cnn_graph_bool = raw_input("Test cnn_graph? [y] or [n]")
 	if test_cnn_graph_bool=='y':
-		test_cnn_graph()
+		steps = int(raw_input("How many training steps do you want to test run?"))
+		test_cnn_graph(steps)

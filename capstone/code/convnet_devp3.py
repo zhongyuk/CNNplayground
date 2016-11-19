@@ -200,13 +200,13 @@ def train_convnet(graph, model, tf_data, convnet_shapes, hyperparams, epoches, m
             # Compute validation set accuracy
             valid_losses[step] = valid_loss.eval(feed_dict={tf_keep_prob:1.0})
             valid_acc[step] = accuracy(valid_prediction.eval(feed_dict={tf_keep_prob:1.0}), tf_valid_labels.eval())
-            print('Epoch: %d:\tLoss: %f\t\tTime cost: %1.f\t\tTrain Acc: %.2f%%\tValid Acc: %2.f%%\tLearning rate: %.6f' \
+            print('Epoch: %d:\tLoss: %f\t\tTime cost: %1.f\t\tTrain Acc: %.2f%%\tValid Acc: %.2f%%\tLearning rate: %.6f' \
                 %(step, tl, (time.time()-t), (train_acc[step]*100), (valid_acc[step]*100),learning_rate.eval(),))
         print "Finished training", '.'*32
         # Compute test set accuracy
         if test_prediction!=None:
             test_acc = accuracy(test_prediction.eval(feed_dict={tf_keep_prob:1.0}), tf_test_labels.eval())
-            print("Test accuracy: %2.f%%" %(test_acc*100))
+            print("Test accuracy: %.2f%%" %(test_acc*100))
         else:
             test_acc = None
     # Group training data into a dictionary

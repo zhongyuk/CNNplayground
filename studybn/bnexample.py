@@ -132,8 +132,8 @@ with tf.Session(graph=graph) as sess:
         _, tloss, tacc = sess.run([optimizer, train_loss, train_accuracy], feed_dict=feed_dict)
         vacc = sess.run(valid_accuracy, feed_dict={keep_prob : 1.0})
         if step%50==0:
-            print('Epoch: %d:\tLoss: %f\t\tTrain Acc: %.2f%%\tValid Acc: %2.f%%\tLearning rate: %.6f' \
+            print('Epoch: %d:\tLoss: %f\t\tTrain Acc: %.2f%%\tValid Acc: %.2f%%\tLearning rate: %.6f' \
                 %(step, tloss, (tacc*100), (vacc*100), learning_rate.eval()))
     print("Finished training")
     tacc = sess.run(test_accuracy, feed_dict={keep_prob : 1.0})
-    print("Test accuracy: %4f%%" %(tacc*100))
+    print("Test accuracy: %.2f%%" %(tacc*100))
