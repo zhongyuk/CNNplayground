@@ -11,6 +11,9 @@ cifar10_data
 /tmp/*
 /logs/*
 
+/*/tmp
+/*logs
+
 # TensorBoard Example Script
 tb_example.py
 
