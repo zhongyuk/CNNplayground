@@ -13,7 +13,7 @@ class batchnorm_v1(layer):
 	TRAINABLE = True
 	FULLNAME = "Batch Normalization Layer"
 
-	def __init__(self, layer_name, depth, center=True, scale=True, decay=.99):
+	def __init__(self, layer_name, depth, center=True, scale=True, decay=.9):
 		# The more data, set decay to be closer to 1.
 		self._layer_name = layer_name
 		self._depth = depth
@@ -34,11 +34,11 @@ class batchnorm_v1(layer):
 		with tf.variable_scope(self._layer_name, reuse=None) as scope:
 			if self._center:
 				beta = tf.get_variable("beta", self._depth, 
-					    initializer=tf.constant_initializer(.2),
+					    initializer=tf.constant_initializer(0.0),
 						trainable=True)
 			if self._scale:
 				gamma = tf.get_variable("gamma", self._depth, 
-						initializer=tf.constant_initializer(.5),
+						initializer=tf.constant_initializer(1.0),
 						trainable=True)
 			moving_avg = tf.get_variable("moving_mean", self._depth,
 						 initializer=tf.constant_initializer(0.0),
@@ -96,10 +96,10 @@ class batchnorm_v2(layer):
 	def initialize(self):
 		with tf.variable_scope(self._layer_name, reuse=None) as scope:
 			beta = tf.get_variable("beta", self._depth, 
-				    initializer=tf.constant_initializer(.2),
+				    initializer=tf.constant_initializer(0.0),
 					trainable=True)
 			gamma = tf.get_variable("gamma", self._depth, 
-					initializer=tf.constant_initializer(.5),
+					initializer=tf.constant_initializer(1.0),
 					trainable=True)
 			moving_avg = tf.get_variable("moving_mean", self._depth,
 						 initializer=tf.constant_initializer(0.0),
@@ -165,7 +165,8 @@ def test_batchnorm(steps):
 
 	input = tf.placeholder(tf.float32, [2,3])
 	for i in range(steps):
-		X_np = (i+1)*np.ones([2,3])
+		#X_np = (i+1)*np.ones([2,3])
+		X_np = np.random.normal(loc=1.0, scale=.5, size=[2,3])
 		print "*"*16, i, "*"*16
 		print X_np
 		print '+'*16, 'is_training==True','+'*16
@@ -212,6 +213,35 @@ def test_batchnorm(steps):
 		print "output for verifying moving_avg1, moving_var1", "-"*16; print ybn_val1
 		print "output for verifying moving_avg2, moving_var2", "-"*16; print ybn_val2
 
+
+def test_convergence(steps, decay):
+	sess = tf.InteractiveSession()
+	batchnorm = batchnorm_v2('batchnorm2', 3, decay=decay)
+	batchnorm.initialize()
+	sess.run([tf.initialize_all_variables()])
+
+	X = tf.placeholder(tf.float32, [1, 1])
+	testXnp = np.random.normal(loc=1.0, scale=0.01, size=[1,1])
+	print "*"*7, "test X: ", testXnp, "*"*7
+	for i in range(steps):
+		trainXnp = np.random.normal(loc=1.0, scale=.01, size=[1,1])
+		trainy = batchnorm.train(X, True)
+		trainy.eval(feed_dict={X : trainXnp})
+		testy = batchnorm.train(X, False)
+		_, _, moving_avg, moving_var = batchnorm.get_variables()
+		#avg_avg = tf.reduce_mean(moving_avg);avg_var = tf.reduce_mean(moving_var)
+		mv_avg, mv_var, _= sess.run([moving_avg, moving_var, testy], feed_dict={X : testXnp})
+		if i%50==0:
+			print "+"*17, i, "+"*17
+			print "moving mean: ", mv_avg
+			print "moving variance: ", mv_var
+		epsilon = 10**(-3)
+		if (abs(mv_avg[0] - 1.0)<epsilon):
+			print i
+
+
 if __name__ == '__main__':
 	steps = int(raw_input("Run how many steps?"))
-	test_batchnorm(steps)
+	#test_batchnorm(steps)
+	decay = float(raw_input("decay rate?"))
+	test_convergence(steps, decay)
