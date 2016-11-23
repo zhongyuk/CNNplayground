@@ -3,9 +3,7 @@ import numpy as np
 from cnn import *
 from tensorflow.python.framework import ops
 import sys
-from sklearn.model_selection import train_test_split
-
-sys.path.append("./capstone/code/")
+sys.path.append("/Users/Zhongyu/Documents/projects/CNNplayground/cifar10/")
 from prepare_input import *
 
 def test_conv2d(steps):
@@ -173,48 +171,10 @@ def test_batchnorm(steps):
 		print "output", "-"*16; print y_val1
 		assert(np.array_equal(y_val1, y_val2))
 
-def prepare_cifar10_data():
-	# Load Data
-    print "Load data", "."*32
-    data_dir = './'
-    train_dataset, train_labels, test_dataset, test_labels = load_data(data_dir)
-
-    # Split 20% of training set as validation set
-    print "Split training and validation set", "."*32    
-    train_dataset, valid_dataset, train_labels, valid_labels = \
-    train_test_split(train_dataset, train_labels, test_size=5000,\
-    random_state=897, stratify=train_labels)
-    # Print out data shapes
-    print 'Dataset\t\tFeatureShape\tLabelShape'
-    print 'Training set:\t', train_dataset.shape,'\t', train_labels.shape
-    print 'Validation set:\t', valid_dataset.shape,'\t', valid_labels.shape
-    print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
-
-    # Reshape the data into pixel by pixel by RGB channels
-    print "Reformat data", "."*32
-    train_dataset = np.rollaxis(train_dataset.reshape((-1,3,32,32)), 1, 4)
-    valid_dataset = np.rollaxis(valid_dataset.reshape((-1,3,32,32)), 1, 4)
-    test_dataset = np.rollaxis(test_dataset.reshape((-1,3,32,32)), 1, 4)
-    print 'Dataset\t\tFeatureShape\t\tLabelShape'
-    print 'Training set:\t', train_dataset.shape,'\t', train_labels.shape
-    print 'Validation set:\t', valid_dataset.shape, '\t', valid_labels.shape
-    print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
-
-    # Dataset Parameters
-    image_size = 32
-    num_labels = 10
-    num_channels = 3
-
-    # Data Preprocess: change datatype; center the data
-    print "Preprocess data", "."*32
-    train_dataset, train_labels = preprocess_data(train_dataset, train_labels, num_labels)
-    valid_dataset, valid_labels = preprocess_data(valid_dataset, valid_labels, num_labels)
-    test_dataset,  test_labels  = preprocess_data(test_dataset,  test_labels,  num_labels)
-    dataset_list = [train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels]
-    return dataset_list
 
 def test_cnn_graph(steps):
-	dataset_list = prepare_cifar10_data()
+	data_dir = "./cifar10/data/"
+	dataset_list = prepare_cifar10_input(data_dir)
 	train_dataset, train_labels = dataset_list[0], dataset_list[1]
 	valid_dataset, valid_labels = dataset_list[2], dataset_list[3]
 	test_dataset , test_labels  = dataset_list[4], dataset_list[5]

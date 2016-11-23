@@ -1,7 +1,6 @@
 import numpy as np
-import tensorflow as tf
 from six.moves import cPickle as pickle
-
+from sklearn.model_selection import train_test_split
 
 def unpickle(file):
     # Load pickled data
@@ -26,8 +25,8 @@ def generate_batch(features, labels, batch_size):
 
 def load_data(data_dir):
     # Load training and testing data
-    train_fnroot = data_dir+'cifar10_data/data_batch_'
-    test_filename = data_dir+'cifar10_data/test_batch'
+    train_fnroot = data_dir+'data_batch_'
+    test_filename = data_dir+'test_batch'
     train_dataset = None
     test_dataset = None
     print "Loading the training data..."
@@ -71,3 +70,50 @@ def preprocess_data(X, y, num_labels):
     X_centered = X_centered[perm]
     y_encoded = y_encoded[perm]
     return X_centered.astype(np.float32), y_encoded.astype(np.float32)
+
+def prepare_cifar10_input(data_dir):
+    # Load Data
+    print "Load data", "."*32
+    train_dataset, train_labels, test_dataset, test_labels = load_data(data_dir)
+
+    # Split 20% of training set as validation set
+    print "Split training and validation set", "."*32    
+    train_dataset, valid_dataset, train_labels, valid_labels = \
+    train_test_split(train_dataset, train_labels, test_size=5000,\
+    random_state=897, stratify=train_labels)
+    # Print out data shapes
+    print 'Dataset\t\tFeatureShape\tLabelShape'
+    print 'Training set:\t', train_dataset.shape,'\t', train_labels.shape
+    print 'Validation set:\t', valid_dataset.shape,'\t', valid_labels.shape
+    print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
+
+    # Reshape the data into pixel by pixel by RGB channels
+    print "Reformat data", "."*32
+    train_dataset = np.rollaxis(train_dataset.reshape((-1,3,32,32)), 1, 4)
+    valid_dataset = np.rollaxis(valid_dataset.reshape((-1,3,32,32)), 1, 4)
+    test_dataset = np.rollaxis(test_dataset.reshape((-1,3,32,32)), 1, 4)
+    print 'Dataset\t\tFeatureShape\t\tLabelShape'
+    print 'Training set:\t', train_dataset.shape,'\t', train_labels.shape
+    print 'Validation set:\t', valid_dataset.shape, '\t', valid_labels.shape
+    print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
+
+    # Dataset Parameters
+    image_size = 32
+    num_labels = 10
+    num_channels = 3
+
+    # Data Preprocess: change datatype; center the data
+    print "Preprocess data", "."*32
+    train_dataset, train_labels = preprocess_data(train_dataset, train_labels, num_labels)
+    valid_dataset, valid_labels = preprocess_data(valid_dataset, valid_labels, num_labels)
+    test_dataset,  test_labels  = preprocess_data(test_dataset,  test_labels,  num_labels)
+    dataset_list = [train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels]
+    print 'Dataset\t\tFeatureShape\t\tLabelShape'
+    print 'Training set:\t', train_dataset.shape,'\t', train_labels.shape
+    print 'Validation set:\t', valid_dataset.shape, '\t', valid_labels.shape
+    print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
+    return dataset_list
+
+if __name__=='__main__':
+    data_dir = "./data/"
+    prepare_cifar10_input(data_dir)

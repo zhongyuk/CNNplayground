@@ -1,5 +1,5 @@
 # cifar-10 data 
-cifar10_data
+cifar10/data
 
 # compiled python file
 *.pyc
