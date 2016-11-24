@@ -40,7 +40,7 @@ def convnet_model(training_steps):
 
 	model.add_fc_layer("fc2", 10, conv_wt_initializer)
 	model.add_batchnorm_layer("fc2/batchnorm")
-	model.add_act_layer("fc/activation")
+	model.add_act_layer("fc2/activation")
 
 	model.setup_learning_rate(0.001)
 
@@ -51,7 +51,8 @@ def convnet_model(training_steps):
 	valid_accuracy = model.evaluation("valid")
 	test_accuracy = model.evaluation("test")
 
-	optimizer = model.setup_optimizer(tf.train.AdamOptimizer)
+	l2_reg_factor = 0.1
+	optimizer = model.setup_optimizer(tf.train.AdamOptimizer, l2_reg=True, l2_reg_factor=l2_reg_factor)
 	merged_summary = model.merge_summaries()
 	graph = model.get_graph()
 
