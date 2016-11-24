@@ -619,6 +619,7 @@ class cnn_graph(object):
 			input_X = self._test_X
 			input_y = self._test_y
 			is_training = False
+			add_output_summary = False
 		else:
 			raise ValueError("dataset has to be 'train', 'valid', or 'test'!")
 		with self._graph.as_default():
