@@ -42,7 +42,8 @@ def convnet_model(training_steps):
 	model.add_batchnorm_layer("fc2/batchnorm")
 	model.add_act_layer("fc2/activation")
 
-	model.setup_learning_rate(0.001)
+	model.setup_learning_rate(0.001, exp_decay=True, decay_steps=200, \
+							 decay_rate=0.95, staircase=False,)
 
 	train_loss = model.compute_train_loss(add_output_summary=False)
 	valid_loss = model.compute_valid_loss()
