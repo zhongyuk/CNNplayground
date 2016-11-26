@@ -599,6 +599,13 @@ class cnn_graph(object):
 		accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
 		return accuracy
 
+	def make_prediction(self, input_X_np):
+		with self._graph.as_default():
+			tf_X = tf.constant(input_X_np)
+			logits = self.__compute_logits(input_X_np, False, add_output_summary=False)
+			predictions = tf.argmax(tf.nn.softmax(logits), 1)
+			return predictions
+
 	def evaluation(self, dataset="train", add_output_summary=True):
 		#specify evaluate on "train", "valid" or "test" set
 		if dataset=="train":
