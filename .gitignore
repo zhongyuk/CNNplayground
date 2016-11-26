@@ -22,3 +22,6 @@ tb_example.py
 
 # MNIST dataset 
 studybn/mldata*
+
+# csv files
+*.csv
