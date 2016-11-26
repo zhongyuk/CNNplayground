@@ -75,12 +75,12 @@ def convnet_model(training_steps):
 			batch_y = train_labels[offset:(offset+batch_size), :]
 			feed_dict = {model.train_X : batch_X,
 						model.train_y : batch_y,
-						model.keep_prob : 0.3}
+						model.keep_probs[0] : 0.3}
 			_, tloss, tacc, tmrg_summ = sess.run([optimizer, train_loss, train_accuracy, \
 										merged_summary], feed_dict=feed_dict)
 			train_losses[step], train_acc[step] = tloss, tacc
 			train_writer.add_summary(tmrg_summ, step)
-			feed_dict[model.keep_prob] =  1.0
+			feed_dict[model.keep_probs[0]] =  1.0
 			vacc, vloss, vmrg_summ = sess.run([valid_accuracy, valid_loss, merged_summary], \
 									 feed_dict=feed_dict)
 			valid_losses[step], valid_acc[step] = vloss, vacc
@@ -88,7 +88,7 @@ def convnet_model(training_steps):
 			print('Epoch: %d:\tLoss: %f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%\tTime Cost: %.1f' \
                  %(step, tloss, (tacc*100), (vacc*100), (time.time()-t)))
 		print("Finished training")
-		tacc = sess.run(test_accuracy, feed_dict={model.keep_prob : 1.0})
+		tacc = sess.run(test_accuracy, feed_dict={model.keep_probs[0] : 1.0})
 		print("Test accuracy: %.2f%%" %(tacc*100))
 	training_data = {'train_losses' : train_losses, 'train_acc' : train_acc, \
 					 'valid_losses' : valid_losses, 'valid_acc' : valid_acc, \

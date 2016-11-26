@@ -2,6 +2,7 @@ import abc
 import tensorflow as tf
 import time
 import numpy as np
+import math
 
 class layer(object):
 	'''an abstract metaclass for CNN layers'''
@@ -306,9 +307,12 @@ class dropout(layer):
 	TRAINABLE = False
 	FULLNAME = "Dropout Layer"
 
-	def __init__(self, layer_name):
+	def __init__(self, layer_name, keep_prob=None):
 		self._layer_name = layer_name
-		self.keep_prob = tf.placeholder(tf.float32)
+		if keep_prob is None:
+			self.keep_prob = tf.placeholder(tf.float32)
+		else:
+			self.keep_prob = keep_prob
 
 	def get_layer_name(self):
 		return self._layer_name
@@ -408,7 +412,7 @@ class cnn_graph(object):
 		# placeholders for mini_batch training and dropout keep_prob
 		self.train_X = None
 		self.train_y = None
-		self.keep_prob = None
+		self.keep_probs = None
 		self._all_layers = [{'layer_name'   : 'input_layer',
 							 'layer_shape'  : input_shape,
 							 'layer_obj'    : None}] # as a linked list
@@ -447,9 +451,9 @@ class cnn_graph(object):
 			conv_layer.initialize(wt_initializer=wt_initializer, bi_initializer=bi_initializer)
 			conv_layer.add_variable_summaries()
 			if padding=='SAME':
-				spacial_length = prev_layer_shape[1]//stride
+				spacial_length = math.ceil(prev_layer_shape[1]/float(stride))
 			elif padding=='VALID':
-				spacial_length = (prev_layer_shape[1] - filter_size + 1)//stride 
+				spacial_length = math.ceil((prev_layer_shape[1] - filter_size + 1.)/stride )
 			output_layer_shape = [prev_layer_shape[0], spacial_length, spacial_length, depth]
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
@@ -485,9 +489,9 @@ class cnn_graph(object):
 			strides = [1, stride, stride, 1]
 			pool_layer = pool2d(layer_name, pool_func, ksize, strides, padding)
 			if padding=='SAME':
-				spacial_length = prev_layer_shape[1]//stride 
+				spacial_length = math.ceil(prev_layer_shape[1]/float(stride)) 
 			elif padding=='VALID':
-				spacial_length = (prev_layer_shape[1] - kernel_size + 1)//stride 
+				spacial_length = math.ceil((prev_layer_shape[1] - kernel_size + 1.)/stride) 
 			output_layer_shape = [prev_layer_shape[0], spacial_length, spacial_length, prev_layer_shape[-1]]
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
@@ -500,8 +504,10 @@ class cnn_graph(object):
 		prev_layer_shape = self._all_layers[-1]['layer_shape']
 		with self._graph.as_default():
 			dropout_layer = dropout(layer_name)
-			if self.keep_prob is None:
-				self.keep_prob = dropout_layer.keep_prob
+			if self.keep_probs is None:
+				self.keep_probs = [dropout_layer.keep_prob]
+			else:
+				self.keep_probs.append(dropout_layer.keep_prob)
 			output_layer_shape = list(prev_layer_shape)
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
