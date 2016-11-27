@@ -114,6 +114,26 @@ def prepare_cifar10_input(data_dir):
     print 'Testing set:\t', test_dataset.shape, '\t', test_labels.shape
     return dataset_list
 
+def plot_data(data):
+    epoch = range(data['train_losses'].shape[0])
+    plt.subplot(211)
+    plt.plot(epoch, data['train_losses'], label= 'training loss')
+    plt.plot(epoch, data['valid_losses'], label='validation loss')
+    plt.ylim([-.1,4])
+    plt.legend(loc='upper right')
+    plt.subplot(212)
+    plt.plot(epoch, data['train_acc'], label='training accuracy')
+    plt.plot(epoch, data['valid_acc'], label='validation accuracy')
+    plt.ylim([0.0, 1.1])
+    plt.legend(loc='lower right')
+    plt.show()
+
+def train_data_summary(filename):
+    data = unpickle(filename)
+    plot_data(data)
+    print("Final Valid Accuracy: %.4f \t Test Accuracy: %.4f" \
+        %(data['valid_acc'][-1], data['test_acc']))
+
 if __name__=='__main__':
     data_dir = "./data/"
     prepare_cifar10_input(data_dir)
