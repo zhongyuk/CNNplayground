@@ -2,6 +2,7 @@ import numpy as np
 from utils import *
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
+#A MNIST CNN example exploring the performance effect brought by fractional max-pooling#
 
 train_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/train.csv"
 X, y = load_data(train_filename)
@@ -47,7 +48,7 @@ with graph.as_default():
 	wt_initializer = tf.truncated_normal_initializer(stddev=.010)
 	scopes = [['conv1', [3, 3, 1, 4]], ['conv2', [3, 3, 4, 4]],
 			 ['conv3', [3, 3, 4, 4]], ['conv4', [3, 3, 4, 4]],
-			 ['fc1', [196, 1024]], ['fc2', [1024, 10]]] #196, 576, 256
+			 ['fc1', [196, 1024]], ['fc2', [1024, 10]]] 
 
 	for scope in scopes:
 		name = scope[0]
@@ -99,7 +100,7 @@ with graph.as_default():
 	train_logits = model_fracmaxpool(train_X_tf)
 	train_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(train_logits, train_y_tf)) 
 	train_pred = tf.nn.softmax(train_logits)
-	learning_rate = 0.005
+	learning_rate = 0.004
 	optimizer = tf.train.AdamOptimizer(learning_rate).minimize(train_loss)
 	valid_logits = model_fracmaxpool(valid_X_tf)
 	valid_pred = tf.nn.softmax(valid_logits)
@@ -118,7 +119,7 @@ with graph.as_default():
 with tf.Session(graph=graph) as sess:
 	tf.initialize_all_variables().run()
 	print("Initialized")
-	for step in range(2000):
+	for step in range(5000):
 		offset = (step*batch_size)%(train_X.shape[0]-batch_size)
 		batch_X = train_X[offset : (offset+batch_size), :]
 		batch_y = train_y[offset : (offset+batch_size), :]
