@@ -93,7 +93,7 @@ def train_model(train_filename, test_filename, training_steps):
 								feed_dict=feed_dict)
 			valid_writer.add_summary(vmrg_summ, step)
 			if step%50==0:
-				print('Epoch: %d:\tLoss: %f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
+				print('Epoch: %d\tLoss: %f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                  	%(step, tloss, (tacc*100), (vacc*100)))
 		print("Finished training")
 		tacc = sess.run(test_accuracy, feed_dict={model.keep_probs[0] : 1.0, model.keep_probs[1] : 1.0})
