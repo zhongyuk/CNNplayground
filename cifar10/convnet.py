@@ -10,7 +10,7 @@ from cnn import *
 def convnet_model(training_steps):
 	# Prepare CIFAR10 data input
 	data_dir = "./data/"
-	dataset_list = prepare_cifar10_input(data_dir)
+	dataset_list = prepare_cifar10_input(data_dir, True)
 	train_dataset, train_labels = dataset_list[0], dataset_list[1]
 	valid_dataset, valid_labels = dataset_list[2], dataset_list[3]
 	test_dataset , test_labels  = dataset_list[4], dataset_list[5]
@@ -33,16 +33,15 @@ def convnet_model(training_steps):
 		model.add_pool_layer(layer_name+"/pool")
 
 	fc_wt_initializer = tf.contrib.layers.variance_scaling_initializer()
-	model.add_fc_layer("fc1", 256, fc_wt_initializer)
-	model.add_batchnorm_layer("fc1/batchnorm")
-	model.add_act_layer("fc1/activation")
-	model.add_dropout_layer("fc1/dropout")
+	fc_layers = {"fc1": 512, 'fc2': 256, 'fc3': num_class}
+	for layer_name, num_neurons in fc_layers.items():
+		model.add_fc_layer(layer_name, num_neurons, fc_wt_initializer)
+		model.add_batchnorm_layer(layer_name+"/batchnorm")
+		model.add_act_layer(layer_name+"/activation")
+		if layer_name!='fc3':
+			model.add_dropout_layer(layer_name+"/dropout")
 
-	model.add_fc_layer("fc2", 10, conv_wt_initializer)
-	model.add_batchnorm_layer("fc2/batchnorm")
-	model.add_act_layer("fc2/activation")
-
-	model.setup_learning_rate(0.001, exp_decay=True, decay_steps=200, \
+	model.setup_learning_rate(0.01, exp_decay=True, decay_steps=200, \
 							 decay_rate=0.95, staircase=False,)
 
 	train_loss = model.compute_train_loss(add_output_summary=False)
@@ -52,8 +51,12 @@ def convnet_model(training_steps):
 	valid_accuracy = model.evaluation("valid")
 	test_accuracy = model.evaluation("test")
 
-	l2_reg_factor = 0.1
-	optimizer = model.setup_optimizer(tf.train.AdamOptimizer, l2_reg=True, l2_reg_factor=l2_reg_factor)
+	# with L2 regularization
+	#l2_reg_factor = 0.1
+	#optimizer = model.setup_optimizer(tf.train.AdamOptimizer, l2_reg=True, l2_reg_factor=l2_reg_factor)
+	# without L2 regularization
+	optimizer = model.setup_optimizer(tf.train.AdamOptimizer)
+	learning_rate = model.get_learning_rate()
 	merged_summary = model.merge_summaries()
 	graph = model.get_graph()
 
@@ -75,28 +78,38 @@ def convnet_model(training_steps):
 			batch_y = train_labels[offset:(offset+batch_size), :]
 			feed_dict = {model.train_X : batch_X,
 						model.train_y : batch_y,
-						model.keep_probs[0] : 0.3}
+						model.keep_probs[0] : 0.5,
+						model.keep_probs[1] : 0.5}
 			_, tloss, tacc, tmrg_summ = sess.run([optimizer, train_loss, train_accuracy, \
 										merged_summary], feed_dict=feed_dict)
 			train_losses[step], train_acc[step] = tloss, tacc
 			train_writer.add_summary(tmrg_summ, step)
-			feed_dict[model.keep_probs[0]] =  1.0
+			feed_dict[model.keep_probs[0]] = 1.0
+			feed_dict[model.keep_probs[1]] = 1.0
 			vacc, vloss, vmrg_summ = sess.run([valid_accuracy, valid_loss, merged_summary], \
 									 feed_dict=feed_dict)
 			valid_losses[step], valid_acc[step] = vloss, vacc
 			valid_writer.add_summary(vmrg_summ, step)
-			print('Epoch: %d:\tLoss: %f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%\tTime Cost: %.1f' \
-                 %(step, tloss, (tacc*100), (vacc*100), (time.time()-t)))
+			lr = learning_rate.eval()
+			print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%\tTime Cost: %d\tLearning Rate: %.4f' \
+                 %(step, tloss, (tacc*100), (vacc*100), (time.time()-t), lr))
 		print("Finished training")
-		tacc = sess.run(test_accuracy, feed_dict={model.keep_probs[0] : 1.0})
+		tacc = sess.run(test_accuracy, feed_dict={model.keep_probs[0] : 1.0, model.keep_probs[1]:1.0})
 		print("Test accuracy: %.2f%%" %(tacc*100))
+	# prepare data needs to be saved
+	hyperparams = {'numOfConvFilter' : [4, 4, 4], 'numOfFCNeuron': [512, 256, 10], 
+					'init_lr': 0.01, 'augmentaion':True, 'decay_rate': 0.95, 
+					'decay_step': 200, 'keep_prob': [0.5, 0.5], 'epoches': training_steps}
 	training_data = {'train_losses' : train_losses, 'train_acc' : train_acc, \
 					 'valid_losses' : valid_losses, 'valid_acc' : valid_acc, \
-					 'test_acc' : tacc}
+					 'test_acc' : tacc, 'hyperparams' : hyperparams}
 	return training_data
 
 if __name__=='__main__':
 	training_steps = raw_input("How many traing steps?")
 	training_data = convnet_model(int(training_steps))
+	save_data_name = 'train_data0.1'
+	with open(save_data_name, 'w') as fh:
+		pickle.dump(training_data, fh)
 
 

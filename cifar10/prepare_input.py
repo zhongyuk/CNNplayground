@@ -71,7 +71,7 @@ def preprocess_data(X, y, num_labels):
     y_encoded = y_encoded[perm]
     return X_centered.astype(np.float32), y_encoded.astype(np.float32)
 
-def prepare_cifar10_input(data_dir):
+def prepare_cifar10_input(data_dir, augmentation=False):
     # Load Data
     print "Load data", "."*32
     train_dataset, train_labels, test_dataset, test_labels = load_data(data_dir)
@@ -101,6 +101,10 @@ def prepare_cifar10_input(data_dir):
     image_size = 32
     num_labels = 10
     num_channels = 3
+
+    # Data Augmentation
+    if augmentation:
+        train_dataset, train_labels = augment_data(train_dataset, train_labels)
 
     # Data Preprocess: change datatype; center the data
     print "Preprocess data", "."*32

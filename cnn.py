@@ -526,7 +526,7 @@ class cnn_graph(object):
 									 'layer_obj'    : act_layer})
 
 	def add_batchnorm_layer(self, layer_name, center=True,
-						    scale=True, decay=.9):
+						    scale=True, decay=.99):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
 		if layer_name in all_layer_names:
 			raise ValueError("layer_name already exists. Please use a different layer name!")
@@ -656,6 +656,10 @@ class cnn_graph(object):
 			else:
 				self._global_step = tf.Variable(0)
 				self._learning_rate = init_lr
+
+	def get_learning_rate(self):
+		with self._graph.as_default():
+			return self._learning_rate
 
 	def setup_optimizer(self, optimizer, l2_reg=False, l2_reg_factor=None, add_output_summary=True):
 		train_loss = self.compute_train_loss(l2_reg, l2_reg_factor, add_output_summary)
