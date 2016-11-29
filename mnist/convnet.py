@@ -30,9 +30,10 @@ def train_model(train_filename, test_filename, training_steps):
 	model = cnn_graph(input_shape, num_class)
 	model.setup_data(batch_size, test_X, test_y, valid_X, valid_y)
 	conv_wt_initializer = tf.truncated_normal_initializer(stddev=.10)
-	conv_layers = {'conv1': 3, 'conv2': 3}
+	conv_layers = [('conv1', 3), ('conv2', 3)]
 
-	for layer_name, filter_size in conv_layers.items():
+	for conv_layer in conv_layers:
+		layer_name, filter_size = conv_layer[0], conv_layer[1]
 		model.add_conv2d_layer(layer_name, filter_size, conv_depth,  conv_wt_initializer)
 		model.add_batchnorm_layer(layer_name+"/batchnorm")
 		model.add_act_layer(layer_name+"/activation")
@@ -54,7 +55,7 @@ def train_model(train_filename, test_filename, training_steps):
 	model.add_act_layer("fc3/activation")
 
 	model.setup_learning_rate(0.01, exp_decay=True, decay_steps=200, \
-							 decay_rate=0.85, staircase=False,)
+							 decay_rate=0.85, staircase=False)
 
 	train_loss = model.compute_train_loss(add_output_summary=False)
 

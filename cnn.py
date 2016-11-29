@@ -420,7 +420,7 @@ class cnn_graph(object):
 	def get_layers(self):
 		return self._all_layers
 
-	def setup_data(self, batch_size, test_X, test_y, valid_X=None, valid_y=None):
+	def setup_data(self, batch_size, valid_X=None, valid_y=None, test_X=None, test_y=None, ):
 		#test_X, test_y, valid_X, valid_y are numpy arrays, batch_size is python int
 		with self._graph.as_default():
 			with tf.name_scope('train_data'):
@@ -429,9 +429,10 @@ class cnn_graph(object):
 				self.train_X = tf.placeholder(tf.float32, shape=train_X_shape, name='train_X')
 				self.train_y = tf.placeholder(tf.float32, shape=(batch_size, self._num_class), name='train_y')
 
-			with tf.name_scope('test_data'):
-				self._test_X = tf.constant(test_X, name='test_X')
-				self._test_y = tf.constant(test_y, name='test_y')
+			if (test_X is not None) and (test_y is not None):
+				with tf.name_scope('test_data'):
+					self._test_X = tf.constant(test_X, name='test_X')
+					self._test_y = tf.constant(test_y, name='test_y')
 
 			if (valid_X is not None) and (valid_y is not None):
 				with tf.name_scope('valid_data'):
@@ -440,7 +441,7 @@ class cnn_graph(object):
 
 	def add_conv2d_layer(self, layer_name, filter_size, depth, 
 						 wt_initializer=None, bi_initializer=None,
-						 stride=1, padding='SAME'):
+						 stride=1, padding='SAME', add_output_summary=True):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
 		if layer_name in all_layer_names:
 			raise ValueError("layer_name already exists. Please use a different layer name!")
@@ -449,7 +450,8 @@ class cnn_graph(object):
 		with self._graph.as_default():
 			conv_layer = conv2d(layer_name, wt_shape, stride, padding)
 			conv_layer.initialize(wt_initializer=wt_initializer, bi_initializer=bi_initializer)
-			conv_layer.add_variable_summaries()
+			if add_output_summary:
+				conv_layer.add_variable_summaries()
 			if padding=='SAME':
 				spacial_length = math.ceil(prev_layer_shape[1]/float(stride))
 			elif padding=='VALID':
@@ -459,7 +461,8 @@ class cnn_graph(object):
 									 'layer_shape'  : output_layer_shape,
 									 'layer_obj'    : conv_layer})
 
-	def add_fc_layer(self, layer_name, out_shape, wt_initializer=None, bi_initializer=None):
+	def add_fc_layer(self, layer_name, out_shape, wt_initializer=None, 
+					bi_initializer=None, add_output_summary=True):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
 		if layer_name in all_layer_names:
 			raise ValueError("layer_name already exists. Please use a different layer name!")
@@ -472,14 +475,15 @@ class cnn_graph(object):
 		with self._graph.as_default():
 			fc_layer = fc(layer_name, wt_shape)
 			fc_layer.initialize(wt_initializer=wt_initializer, bi_initializer=bi_initializer)
-			fc_layer.add_variable_summaries()
+			if add_output_summary:
+				fc_layer.add_variable_summaries()
 			output_layer_shape = [prev_layer_shape[0], out_shape]
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
 									 'layer_obj'    : fc_layer})
 
-	def add_pool_layer(self, layer_name, pool_func=tf.nn.max_pool,
-					   kernel_size=2, stride=2, padding='SAME'):
+	def add_pool_layer(self, layer_name, pool_func=tf.nn.max_pool, 
+					kernel_size=2, stride=2, padding='SAME'):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
 		if layer_name in all_layer_names:
 			raise ValueError("layer_name already exists. Please use a different layer name!")
@@ -526,7 +530,8 @@ class cnn_graph(object):
 									 'layer_obj'    : act_layer})
 
 	def add_batchnorm_layer(self, layer_name, center=True,
-						    scale=True, decay=.99):
+						    scale=True, decay=.99,
+						    add_output_summary=True,):
 		all_layer_names = [l['layer_name'] for l in self._all_layers]
 		if layer_name in all_layer_names:
 			raise ValueError("layer_name already exists. Please use a different layer name!")
@@ -536,7 +541,8 @@ class cnn_graph(object):
 			depth = prev_layer_shape[-1]
 			batchnorm_layer = batchnorm(layer_name, depth, center=center, scale=scale, decay=decay)
 			batchnorm_layer.initialize()
-			batchnorm_layer.add_variable_summaries()
+			if add_output_summary:
+				batchnorm_layer.add_variable_summaries()
 			output_layer_shape = list(prev_layer_shape)
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
@@ -645,17 +651,21 @@ class cnn_graph(object):
 			return accuracy
 
 	def setup_learning_rate(self, init_lr, exp_decay=False, decay_steps=None, 
-							decay_rate=None, staircase=False, name=None):
+							decay_rate=None, staircase=False, name=None,
+							add_output_summary=True):
 		if exp_decay and decay_steps==None and decay_rate==None:
 			raise ValueError("with exp_decay=True decay_steps and decay_rate cannot be None!")
 		with self._graph.as_default():
-			if exp_decay:
-				self._global_step = tf.Variable(0)
-				self._learning_rate = tf.train.exponential_decay(init_lr, self._global_step, 
-									  decay_steps, decay_rate, staircase, name)
-			else:
-				self._global_step = tf.Variable(0)
-				self._learning_rate = init_lr
+			with tf.name_scope("learning_rate"):
+				if exp_decay:
+					self._global_step = tf.Variable(0)
+					self._learning_rate = tf.train.exponential_decay(init_lr, self._global_step, 
+									  	decay_steps, decay_rate, staircase, name)
+				else:
+					self._global_step = tf.Variable(0)
+					self._learning_rate = init_lr
+			if add_output_summary:
+				tf.scalar_summary("learning_rate", self._learning_rate)
 
 	def get_learning_rate(self):
 		with self._graph.as_default():

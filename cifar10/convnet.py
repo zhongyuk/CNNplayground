@@ -24,17 +24,19 @@ def convnet_model(training_steps):
 	model = cnn_graph(input_shape, num_class)
 	model.setup_data(batch_size, test_dataset, test_labels, valid_dataset, valid_labels)
 	conv_wt_initializer = tf.truncated_normal_initializer(stddev=.15)
-	conv_layers = {'conv1': 3, 'conv2': 5, 'conv3': 3 }
+	conv_layers = [('conv1', 3), ('conv2', 5), ('conv3', 3) ]
 
-	for layer_name, filter_size in conv_layers.items():
+	for conv_layer in conv_layers:
+		layer_name, filter_size = conv_layer[0], conv_layer[1]
 		model.add_conv2d_layer(layer_name, filter_size, conv_depth,  conv_wt_initializer)
 		model.add_batchnorm_layer(layer_name+"/batchnorm")
 		model.add_act_layer(layer_name+"/activation")
 		model.add_pool_layer(layer_name+"/pool")
 
 	fc_wt_initializer = tf.contrib.layers.variance_scaling_initializer()
-	fc_layers = {"fc1": 512, 'fc2': 256, 'fc3': num_class}
-	for layer_name, num_neurons in fc_layers.items():
+	fc_layers = [("fc1", 512), ('fc2', 256), ('fc3', num_class)]
+	for fc_layer in fc_layers:
+		layer_name, num_neuron = fc_layer[0], fc_layer[1]
 		model.add_fc_layer(layer_name, num_neurons, fc_wt_initializer)
 		model.add_batchnorm_layer(layer_name+"/batchnorm")
 		model.add_act_layer(layer_name+"/activation")
