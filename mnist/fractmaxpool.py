@@ -1,8 +1,8 @@
+"""A MNIST CNN example exploring the performance effect brought by fractional max-pooling"""
 import numpy as np
 from utils import *
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-#A MNIST CNN example exploring the performance effect brought by fractional max-pooling#
 
 train_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/train.csv"
 X, y = load_data(train_filename)
@@ -15,20 +15,6 @@ valid_X = reshape_data(valid_X)
 test_X = reshape_data(test_X)
 
 batch_size = 64
-
-def initialize_withbn(scope, shape, wt_initializer, center=True, scale=True):
-    with tf.variable_scope(scope, reuse=None) as sp:
-        wt = tf.get_variable("weights", shape, initializer=wt_initializer)
-        bi = tf.get_variable("biases", shape[-1], initializer=tf.constant_initializer(1.))
-        if center:
-            beta = tf.get_variable("beta", shape[-1], initializer=tf.constant_initializer(0.0))
-        if scale:
-            gamma = tf.get_variable("gamma", shape[-1], initializer=tf.constant_initializer(1.0))
-        moving_avg = tf.get_variable("moving_mean", shape[-1], initializer=tf.constant_initializer(0.0), \
-                                     trainable=False)
-        moving_var = tf.get_variable("moving_variance", shape[-1], initializer=tf.constant_initializer(1.0), \
-                                     trainable=False)
-        sp.reuse_variables()
 
 def initialize(scope, shape, wt_initializer):
     with tf.variable_scope(scope, reuse=None) as sp:
