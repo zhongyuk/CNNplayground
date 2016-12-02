@@ -399,6 +399,26 @@ class batchnorm(layer):
 				tf.histogram_summary(self._layer_name, output)
 		return output
 
+class keep_prob_collection(object):
+	"""
+	A class for grouping all keep_prob placeholders together,
+	and generating feed_dict for all keep_prob placeholders together
+	"""
+	def __init__(self):
+		super(object, self).__init__() #super().__init__ in python 3
+
+	def add_keep_prob(self, name, placeholder):
+		setattr(self, name, placeholder)
+
+	def get_keep_prob(self, name):
+		return getattr(self, name)
+
+	def generate_dict(self, name_value_dict):
+		d = {}
+		for name, value in name_value_dict.items():
+			d[self.get_keep_prob(name)] = value
+		return d 
+
 class cnn_graph(object):
 
 	FULLNAME = 'Convolutional Neural Network Model'
