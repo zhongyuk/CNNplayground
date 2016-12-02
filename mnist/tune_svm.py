@@ -28,7 +28,7 @@ def tune_svm(train_filename):
 		pickle.dump(result, fh)
 	print "Done tunning SVM."
 
-def manual_tune_svm(train_filename, k, C):
+def manual_tune_svm(train_filename, k, C, gamma):
 	X, y = load_data(train_filename)
 	label = np.argmax(y, 1)
 	skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=5261)
@@ -39,15 +39,15 @@ def manual_tune_svm(train_filename, k, C):
 		train_X, test_X = X[train_index, :], X[test_index, :]
 		train_y, test_y = label[train_index], label[test_index]
 		t = time.time()
-		svm_model(train_X, train_y, test_X, test_y, C)
+		svm_model(train_X, train_y, test_X, test_y, C, gamma)
 		print "Time cost for training 1 fold: ", time.time()-t
 
 
-def svm_model(train_X, train_y, test_X, test_y, C):
+def svm_model(train_X, train_y, test_X, test_y, C, gamma):
 	"""
 	A Support Vector Machine Model
 	"""
-	clf_obj = SVC()
+	clf_obj = SVC(C=C, gamma=gamma)
 	clf_obj.fit(train_X, train_y)
 	train_accuracy = clf_obj.score(train_X, train_y)
 	valid_accuracy = clf_obj.score(test_X, test_y)
@@ -59,4 +59,4 @@ def svm_model(train_X, train_y, test_X, test_y, C):
 if __name__=='__main__':
 	train_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/train.csv"
 	#tune_svm(train_filename)
-	manual_tune_svm(train_filename, k=2, C=100)
+	manual_tune_svm(train_filename, k=2, C=7, gamma='auto')
