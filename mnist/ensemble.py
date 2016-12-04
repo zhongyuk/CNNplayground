@@ -46,10 +46,10 @@ def train_kfold(train_filename, test_filename, k, model,
 if __name__=='__main__':
 	train_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/train.csv"
 	test_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/test.csv"
-	training_steps = 51
-	K = 2
-	model_names = [snn_f2, cnn_c2f2, svm_model]
-	data_filenames = ['snn_f2_kfold', 'cnn_c2f2_kfold', 'svm_model_kfold']
+	training_steps = 2501
+	K = 3
+	model_names = [snn_f2, cnn_c2f2, cnn_c4f3, svm_model]
+	data_filenames = ['snn_f2_kfold', 'cnn_c2f2_kfold', 'cnn_c4f3_kfold','svm_model_kfold']
 	for model, data_fn in zip(model_names, data_filenames):
 		data = train_kfold(train_filename, test_filename, K, model, 
 							training_steps, data_fn)
