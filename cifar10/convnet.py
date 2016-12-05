@@ -108,7 +108,7 @@ def convnet_model(training_steps):
 	return training_data
 
 if __name__=='__main__':
-	training_steps = raw_input("How many traing steps?")
+	training_steps = input("How many traing steps?")
 	training_data = convnet_model(int(training_steps))
 	save_data_name = 'train_data0.1'
 	with open(save_data_name, 'w') as fh:
