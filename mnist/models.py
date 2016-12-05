@@ -192,7 +192,7 @@ def cnn_c4f3(train_X, train_y, test_X, test_y, training_steps):
 		if layer_name!='fc3':
 			model.add_dropout_layer(layer_name+'/dropout')
 
-	model.setup_learning_rate(0.1, exp_decay=True, decay_steps=250, \
+	model.setup_learning_rate(0.1, exp_decay=True, decay_steps=2000, \
 							decay_rate=0.8, staircase=True, add_output_summary=False)
 
 	train_loss = model.compute_train_loss(add_output_summary=False)
@@ -255,4 +255,21 @@ def svm_model(train_X, train_y, test_X, test_y, training_steps):
 	print("Making perdiction.")
 	prediction = clf_obj.predict(test_X)
 	return prediction 
+
+def train_model(model, training_steps):
+    '''A function for tuning any one of the models defined above in the models.py'''
+    train_filename = "/Users/Zhongyu/Documents/projects/CNNplayground/mnist/data/train.csv"
+    X, y = load_data(train_filename)
+    train_X, valid_X, train_y, valid_y = train_test_split(X, y, test_size=2000,
+                                         random_state=263, stratify=y)
+    train_X = reshape_data(train_X)
+    valid_X = reshape_data(valid_X)
+    pred = model(train_X, train_y, valid_X, valid_y, training_steps)
+    return pred
+
+if __name__=='__main__':
+    # Run train_model func on cnn_c4f3 to tune the model
+    model = cnn_c4f3
+    training_steps = 2501
+    pred = train_model(model, training_steps)
 
