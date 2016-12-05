@@ -171,6 +171,26 @@ def test_batchnorm(steps):
 		print "output", "-"*16; print y_val1
 		assert(np.array_equal(y_val1, y_val2))
 
+def test_keep_prob_collection():
+	keep_probs = keep_prob_collection()
+	sess = tf.InteractiveSession()
+	keep_probs.add_keep_prob('dropout1', tf.placeholder(tf.float32))
+	keep_probs.add_keep_prob('dropout2', tf.placeholder(tf.float32))
+	names = keep_probs.get_all_names()
+	assert(names==['dropout1', 'dropout2'])
+	kp1 = keep_probs.get_keep_prob('dropout1')
+	kp2 = keep_probs.get_keep_prob('dropout2')
+	kpv1 = kp1*10
+	kpv2 = kp2*10
+	d = {'dropout1':0.3, 'dropout2':0.7}
+	keep_probs.set_value('dropout1', 0.2)
+	assert(keep_probs.get_value('dropout1')==0.2)
+	keep_probs.set_collection_values(d)
+	feed_dict = keep_probs.get_feed_dict()
+	val1, val2 = sess.run([kpv1, kpv2], feed_dict=feed_dict)
+	assert(val1==3)
+	assert(val2==7)
+	print("keep_prob_collection testing complete!")
 
 def test_cnn_graph(steps):
 	data_dir = "./cifar10/data/"
@@ -259,24 +279,27 @@ def test_cnn_graph(steps):
 		
 		tf.initialize_all_variables().run()
 		print("Initialized")
+		cnn_model.set_kp_value('fc1/dropout', 0.5)
+		train_feed_dict = cnn_model.get_kp_collection_dict()
 		for step in range(steps):
 			offset = (step*batch_size)%(train_labels.shape[0]-batch_size)
 			batch_X = train_dataset[offset:(offset+batch_size), :]
 			batch_y = train_labels[offset:(offset+batch_size), :]
-			feed_dict = {cnn_model.train_X : batch_X, 
-						cnn_model.train_y : batch_y,
-						cnn_model.keep_prob : 0.5}
+			train_feed_dict.update({cnn_model.train_X : batch_X, 
+							  		cnn_model.train_y : batch_y})
 			_, tloss, tacc, tmrg_summ = sess.run([optimizer, train_loss, train_accuracy,\
-			 						    merged_summary], feed_dict=feed_dict)
+			 						    merged_summary], feed_dict=train_feed_dict)
 			train_writer.add_summary(tmrg_summ, step)
+
+			feed_dict = dict(cnn_model.kp_reference_feed_dict)
+			feed_dict.update({cnn_model.train_X : batch_X,
+							  cnn_model.train_y : batch_y})
 			vacc, vmrg_summ = sess.run([valid_accuracy, merged_summary], \
-							  feed_dict={cnn_model.train_X : batch_X,
-							  			 cnn_model.train_y : batch_y,
-							  			 cnn_model.keep_prob : 1.0})
+							  feed_dict=feed_dict)
 			valid_writer.add_summary(vmrg_summ, step)
 			print('Epoch: %d:\tLoss: %f\t\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                  %(step, tloss, (tacc*100), (vacc*100)))
-		tacc = sess.run(test_accuracy, feed_dict={cnn_model.keep_prob : 1.0})
+		tacc = sess.run(test_accuracy, feed_dict=cnn_model.kp_reference_feed_dict)
 		print("Finished training")
 		print("Test accuracy: %.2f%%" %(tacc*100))
 
@@ -310,3 +333,7 @@ if __name__=='__main__':
 	if test_cnn_graph_bool=='y':
 		steps = int(raw_input("How many training steps do you want to test run?"))
 		test_cnn_graph(steps)
+
+	test_keep_prob_collection_bool = raw_input("Test keep_prob_collection? [y] or [n]")
+	if test_keep_prob_collection_bool=='y':
+		test_keep_prob_collection()

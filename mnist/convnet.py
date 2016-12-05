@@ -77,19 +77,21 @@ def train_model(train_filename, test_filename, training_steps):
 		valid_writer = tf.train.SummaryWriter('tmp/'+'/valid')
 		tf.initialize_all_variables().run()
 		print("Initialized")
+		model.set_kp_value('fc1/dropout', 0.5)
+		model.set_kp_value('fc2/dropout', 0.6)
+		train_feed_dict = model.get_kp_collection_dict()
 		for step in range(training_steps):
 			offset = (step*batch_size)%(train_X.shape[0]-batch_size)
 			batch_X = train_X[offset:(offset+batch_size), :]
 			batch_y = train_y[offset:(offset+batch_size), :]
-			feed_dict = {model.train_X : batch_X,
-						model.train_y : batch_y,
-						model.keep_probs[0] : 0.5,
-						model.keep_probs[1] : 0.6}
+			train_feed_dict.update({model.train_X : batch_X,
+									model.train_y : batch_y})
 			_, tloss, tacc, tmrg_summ = sess.run([optimizer, train_loss, train_accuracy, \
-										merged_summary], feed_dict=feed_dict)
+										merged_summary], feed_dict=train_feed_dict)
 			train_writer.add_summary(tmrg_summ, step)
-			feed_dict[model.keep_probs[0]] = 1.0
-			feed_dict[model.keep_probs[1]] = 1.0
+			feed_dict = dict(model.kp_reference_feed_dict)
+			feed_dict.update({model.train_X : batch_X,
+							  model.train_y : batch_y})
 			vacc, vmrg_summ = sess.run([valid_accuracy, merged_summary], \
 								feed_dict=feed_dict)
 			valid_writer.add_summary(vmrg_summ, step)
@@ -97,10 +99,10 @@ def train_model(train_filename, test_filename, training_steps):
 				print('Epoch: %d\tLoss: %f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                  	%(step, tloss, (tacc*100), (vacc*100)))
 		print("Finished training")
-		tacc = sess.run(test_accuracy, feed_dict={model.keep_probs[0] : 1.0, model.keep_probs[1] : 1.0})
+		tacc = sess.run(test_accuracy, feed_dict=model.kp_reference_feed_dict)
 		print("Test accuracy: %.2f%%" %(tacc*100))
 		print("Making prediction.")
-		kaggle_pred = sess.run(kaggle_y, feed_dict={model.keep_probs[0] : 1.0, model.keep_probs[1] : 1.0})
+		kaggle_pred = sess.run(kaggle_y, feed_dict=model.kp_reference_feed_dict)
 		print("Done making predictions.")
 	return kaggle_pred
 

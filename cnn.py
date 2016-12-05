@@ -402,22 +402,41 @@ class batchnorm(layer):
 class keep_prob_collection(object):
 	"""
 	A class for grouping all keep_prob placeholders together,
-	and generating feed_dict for all keep_prob placeholders together
+	and generating feed_dict for all keep_prob placeholders together.
+	The default real value setting for each keep probability placeholder is 1.0
 	"""
 	def __init__(self):
-		super(object, self).__init__() #super().__init__ in python 3
+		super(keep_prob_collection, self).__init__() #super().__init__ in python 3
+		self._names = []
+		self._feed_dict = {}
 
 	def add_keep_prob(self, name, placeholder):
+		if name in self._names:
+			raise ValueError("Duplicate name already exists in keep_prob_collection names.")
 		setattr(self, name, placeholder)
+		self._names.append(name)
+		# set the default setting
+		self._feed_dict[self.get_keep_prob(name)] = 1.0
 
 	def get_keep_prob(self, name):
 		return getattr(self, name)
 
-	def generate_dict(self, name_value_dict):
-		d = {}
+	def set_collection_values(self, name_value_dict):
 		for name, value in name_value_dict.items():
-			d[self.get_keep_prob(name)] = value
-		return d 
+			self._feed_dict[self.get_keep_prob(name)] = value
+		return self._feed_dict
+
+	def set_value(self, name, value):
+		self._feed_dict[self.get_keep_prob(name)] = value
+
+	def get_value(self, name):
+		return self._feed_dict[self.get_keep_prob(name)]
+
+	def get_feed_dict(self):
+		return self._feed_dict
+
+	def get_all_names(self):
+		return self._names
 
 class cnn_graph(object):
 
@@ -432,13 +451,26 @@ class cnn_graph(object):
 		# placeholders for mini_batch training and dropout keep_prob
 		self.train_X = None
 		self.train_y = None
-		self.keep_probs = None
+		self._keep_probs = keep_prob_collection()
+		self.kp_reference_feed_dict = None
 		self._all_layers = [{'layer_name'   : 'input_layer',
 							 'layer_shape'  : input_shape,
 							 'layer_obj'    : None}] # as a linked list
 
 	def get_layers(self):
 		return self._all_layers
+
+	def set_kp_value(self, name, value):
+		self._keep_probs.set_value(name, value)
+
+	def get_kp_value(self, name):
+		return self._keep_probs.get_value(name)
+
+	def set_kp_collection_values(self, name_value_dict):
+		return self._keep_probs.set_collection_values(name_value_dict)
+
+	def get_kp_collection_dict(self):
+		return self._keep_probs.get_feed_dict()
 
 	def setup_data(self, batch_size, valid_X=None, valid_y=None, test_X=None, test_y=None, ):
 		#test_X, test_y, valid_X, valid_y are numpy arrays, batch_size is python int
@@ -528,10 +560,8 @@ class cnn_graph(object):
 		prev_layer_shape = self._all_layers[-1]['layer_shape']
 		with self._graph.as_default():
 			dropout_layer = dropout(layer_name)
-			if self.keep_probs is None:
-				self.keep_probs = [dropout_layer.keep_prob]
-			else:
-				self.keep_probs.append(dropout_layer.keep_prob)
+			self._keep_probs.add_keep_prob(layer_name, dropout_layer.keep_prob)
+			self.kp_reference_feed_dict = self._keep_probs.get_feed_dict()
 			output_layer_shape = list(prev_layer_shape)
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,

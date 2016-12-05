@@ -5,6 +5,7 @@ from utils import *
 sys.path.append("/Users/Zhongyu/Documents/projects/CNNplayground/")
 from cnn import *
 from sklearn.svm import SVC
+from sklearn.model_selection import train_test_split
 
 def snn_f2(train_X, train_y, test_X, test_y, training_steps):
 	"""
@@ -41,18 +42,18 @@ def snn_f2(train_X, train_y, test_X, test_y, training_steps):
 	with tf.Session(graph=graph) as sess:
 		tf.initialize_all_variables().run()
 		print("Initialized")
+		model.set_kp_value('fc1/dropout', 0.5)
+		train_feed_dict = model.get_kp_collection_dict()
 		for step in range(training_steps):
 			offset = (step*batch_size)%(train_X.shape[0]-batch_size)
 			batch_X = train_X[offset:(offset+batch_size), :]
 			batch_y = train_y[offset:(offset+batch_size), :]
-			feed_dict = {model.train_X : batch_X,
-						 model.train_y : batch_y,
-						 model.keep_probs[0] : 0.6}
+			train_feed_dict.update({model.train_X : batch_X,
+									model.train_y : batch_y})
 			_, tloss, tacc = sess.run([optimizer, train_loss, train_accuracy],
-							 feed_dict=feed_dict)
+							 feed_dict=train_feed_dict)
 			if test_y is not None:
-				feed_dict[model.keep_probs[0]] = 1.0
-				vacc = sess.run(valid_accuracy, feed_dict=feed_dict)
+				vacc = sess.run(valid_accuracy, feed_dict=model.kp_reference_feed_dict)
 				if step%50==0:
 					print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                  		%(step, tloss, (tacc*100), (vacc*100)))
@@ -62,7 +63,7 @@ def snn_f2(train_X, train_y, test_X, test_y, training_steps):
                  		%(step, tloss, (tacc*100)))
 		print("Finished training")
 		print("Making prediction.")
-		prediction = sess.run(pred_y, feed_dict={model.keep_probs[0]:1.0})
+		prediction = sess.run(pred_y, feed_dict=model.kp_reference_feed_dict)
 		print("Done making prediction.")
 	return prediction
 
@@ -122,18 +123,18 @@ def cnn_c2f2(train_X, train_y, test_X, test_y, training_steps):
 	with tf.Session(graph=graph) as sess:
 		tf.initialize_all_variables().run()
 		print("Initialized")
+		model.set_kp_value('fc1/dropout', 0.67)
+		train_feed_dict = model.get_kp_collection_dict()
 		for step in range(training_steps):
 			offset = (step*batch_size)%(train_X.shape[0]-batch_size)
 			batch_X = train_X[offset:(offset+batch_size), :]
 			batch_y = train_y[offset:(offset+batch_size), :]
-			feed_dict = {model.train_X : batch_X,
-						 model.train_y : batch_y,
-						 model.keep_probs[0] : 0.67}
+			train_feed_dict.update({model.train_X : batch_X,
+									model.train_y : batch_y})
 			_, tloss, tacc = sess.run([optimizer, train_loss, train_accuracy],
-							 feed_dict=feed_dict)
+							 feed_dict=train_feed_dict)
 			if test_y is not None:
-				feed_dict[model.keep_probs[0]] = 1.0
-				vacc = sess.run(valid_accuracy, feed_dict=feed_dict)
+				vacc = sess.run(valid_accuracy, feed_dict=model.kp_reference_feed_dict)
 				if step%50==0:
 					print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                  		%(step, tloss, (tacc*100), (vacc*100)))
@@ -143,7 +144,7 @@ def cnn_c2f2(train_X, train_y, test_X, test_y, training_steps):
                  		%(step, tloss, (tacc*100)))
 		print("Finished training")
 		print("Making prediction.")
-		prediction = sess.run(pred_y, feed_dict={model.keep_probs[0]:1.0})
+		prediction = sess.run(pred_y, feed_dict=model.kp_reference_feed_dict)
 		print("Done making prediction.")
 	return prediction
 
@@ -192,8 +193,8 @@ def cnn_c4f3(train_X, train_y, test_X, test_y, training_steps):
 		if layer_name!='fc3':
 			model.add_dropout_layer(layer_name+'/dropout')
 
-	model.setup_learning_rate(0.1, exp_decay=True, decay_steps=2000, \
-							decay_rate=0.8, staircase=True, add_output_summary=False)
+	model.setup_learning_rate(0.1, exp_decay=True, decay_steps=1000, \
+							decay_rate=0.5, staircase=True, add_output_summary=False)
 
 	train_loss = model.compute_train_loss(add_output_summary=False)
 	train_accuracy = model.evaluation("train", add_output_summary=False)
@@ -207,30 +208,29 @@ def cnn_c4f3(train_X, train_y, test_X, test_y, training_steps):
 	with tf.Session(graph=graph) as sess:
 		tf.initialize_all_variables().run()
 		print("Initialized")
+		model.set_kp_value('fc1/dropout', 0.4)
+		model.set_kp_value('fc2/dropout', 0.7)
+		train_feed_dict = model.get_kp_collection_dict()
 		for step in range(training_steps):
 			offset = (step*batch_size)%(train_X.shape[0]-batch_size)
 			batch_X = train_X[offset:(offset+batch_size), :]
 			batch_y = train_y[offset:(offset+batch_size), :]
-			feed_dict = {model.train_X : batch_X,
-						 model.train_y : batch_y,
-						 model.keep_probs[0] : 0.4,
-						 model.keep_probs[1] : 0.6}
+			train_feed_dict.update({model.train_X : batch_X,
+									model.train_y : batch_y})
 			_, tloss, tacc = sess.run([optimizer, train_loss, train_accuracy],
-							 feed_dict=feed_dict)
+							 feed_dict=train_feed_dict)
 			if test_y is not None:
-				feed_dict[model.keep_probs[0]] = 1.0
-				feed_dict[model.keep_probs[1]] = 1.0
-				vacc = sess.run(valid_accuracy, feed_dict=feed_dict)
-				if step%10==0:
+				vacc = sess.run(valid_accuracy, feed_dict=model.kp_reference_feed_dict)
+				if step%50==0:
 					print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                  		%(step, tloss, (tacc*100), (vacc*100)))
 			else:
-				if step%10==0:
+				if step%50==0:
 					print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\t' \
                  		%(step, tloss, (tacc*100)))
 		print("Finished training")
 		print("Making prediction.")
-		prediction = sess.run(pred_y, feed_dict={model.keep_probs[0]:1.0, model.keep_probs[1]:1.0})
+		prediction = sess.run(pred_y, feed_dict=model.kp_reference_feed_dict)
 		print("Done making prediction.")
 	return prediction
 
@@ -256,20 +256,24 @@ def svm_model(train_X, train_y, test_X, test_y, training_steps):
 	prediction = clf_obj.predict(test_X)
 	return prediction 
 
-def train_model(model, training_steps):
-    '''A function for tuning any one of the models defined above in the models.py'''
-    train_filename = "/Users/Zhongyu/Documents/projects/CNNplayground/mnist/data/train.csv"
+def train_model(model, training_steps, cnn_mode=True):
+    """
+    A function for tuning any one of the models defined above in the models.py
+    set cnn_mode to be False for snn_f2 model and svm_model
+    """
+    train_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/train.csv"
     X, y = load_data(train_filename)
     train_X, valid_X, train_y, valid_y = train_test_split(X, y, test_size=2000,
                                          random_state=263, stratify=y)
-    train_X = reshape_data(train_X)
-    valid_X = reshape_data(valid_X)
+    if cnn_mode:
+    	train_X = reshape_data(train_X)
+    	valid_X = reshape_data(valid_X)
     pred = model(train_X, train_y, valid_X, valid_y, training_steps)
     return pred
 
 if __name__=='__main__':
     # Run train_model func on cnn_c4f3 to tune the model
     model = cnn_c4f3
-    training_steps = 2501
-    pred = train_model(model, training_steps)
+    training_steps = 3001
+    pred = train_model(model, training_steps, cnn_mode=True)
 
