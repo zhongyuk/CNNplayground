@@ -57,6 +57,6 @@ def svm_model(train_X, train_y, test_X, test_y, C, gamma):
 
 
 if __name__=='__main__':
-    train_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/train.csv"
+    train_filename = "/Users/Zhongyu/Documents/projects/CNNplayground/mnist/data/train.csv"
     #tune_svm(train_filename)
     manual_tune_svm(train_filename, k=2, C=7, gamma='auto')

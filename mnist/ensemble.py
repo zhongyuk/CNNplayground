@@ -20,7 +20,7 @@ def train_kfold(train_filename, test_filename, k, model,
     predictions = None
     for i in range(k):
         print("="*12, "training fold ", i, "="*12)
-        train_index, test_index = skf_iter_obj.next()
+        train_index, test_index = next(skf_iter_obj)
         train_X, test_X = X[train_index, :], X[test_index, :]
         train_y, test_y = y[train_index, :], y[test_index, :]
         if corr_labels is None:
@@ -44,12 +44,14 @@ def train_kfold(train_filename, test_filename, k, model,
 
 
 if __name__=='__main__':
-    train_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/train.csv"
-    test_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/test.csv"
-    training_steps = 2501
-    K = 3
-    model_names = [snn_f2, cnn_c2f2, cnn_c4f3, svm_model]
-    data_filenames = ['snn_f2_kfold', 'cnn_c2f2_kfold', 'cnn_c4f3_kfold','svm_model_kfold']
+    train_filename = "/Users/Zhongyu/Documents/projects/CNNplayground/mnist/data/train.csv"
+    test_filename = "/Users/Zhongyu/Documents/projects/CNNplayground/mnist/data/test.csv"
+    training_steps = 201
+    K = 2
+    #model_names = [snn_f2, cnn_c2f2, cnn_c4f3, svm_model]
+    #data_filenames = ['snn_f2_kfold', 'cnn_c2f2_kfold', 'cnn_c4f3_kfold','svm_model_kfold']
+    model_names = [snn_f2]
+    data_filenames = ['snn_f2_kfold']
     for model, data_fn in zip(model_names, data_filenames):
         data = train_kfold(train_filename, test_filename, K, model, 
                             training_steps, data_fn)
