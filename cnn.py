@@ -452,7 +452,7 @@ class cnn_graph(object):
 		self.train_X = None
 		self.train_y = None
 		self._keep_probs = keep_prob_collection()
-		self.kp_reference_feed_dict = None
+		self.kp_reference_feed_dict = {}
 		self._all_layers = [{'layer_name'   : 'input_layer',
 							 'layer_shape'  : input_shape,
 							 'layer_obj'    : None}] # as a linked list
@@ -561,7 +561,7 @@ class cnn_graph(object):
 		with self._graph.as_default():
 			dropout_layer = dropout(layer_name)
 			self._keep_probs.add_keep_prob(layer_name, dropout_layer.keep_prob)
-			self.kp_reference_feed_dict = self._keep_probs.get_feed_dict()
+			self.kp_reference_feed_dict[self._keep_probs.get_keep_prob(layer_name)] = 1.0
 			output_layer_shape = list(prev_layer_shape)
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
