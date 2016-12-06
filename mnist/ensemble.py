@@ -38,7 +38,7 @@ def train_kfold(train_filename, test_filename, k,
 	# collect data and pickle data
 	data = {'labels':corr_labels, 'predict':predictions,
 			'test_pred' : predict_ty}
-	with open(data_filename, 'w') as fh:
+	with open(data_filename, 'wb') as fh:
 		pickle.dump(data, fh)
 	return data
 

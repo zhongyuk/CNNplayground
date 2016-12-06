@@ -162,13 +162,13 @@ def cnn_c4f3(train_X, train_y, test_X, test_y):
 						-> fc2   -> BN -> ReLu -> dropout  -> 
 						-> fc3   -> BN -> ReLu -> softmax  -> output
 	"""
-	training_steps = 10001
+	training_steps = 3001
 	train_X = reshape_data(train_X)
 	test_X = reshape_data(test_X)
 
 	batch_size = 64
 	input_shape = [batch_size, 28, 28, 1]
-	conv_depth = 4
+	conv_depth = 2
 	num_class = 10
 
 	# Build a ConvNet graph
@@ -184,9 +184,10 @@ def cnn_c4f3(train_X, train_y, test_X, test_y):
 		model.add_batchnorm_layer(layer_name+'/batchnorm', add_output_summary=False)
 		model.add_act_layer(layer_name+'/activation')
 		model.add_pool_layer(layer_name+'/pool')
+		conv_depth *= 2
 
 	fc_wt_initializer = tf.contrib.layers.variance_scaling_initializer()
-	fc_layers = [('fc1', 1024), ('fc2', 512), ('fc3', num_class)]
+	fc_layers = [('fc1', 1024), ('fc2', 1024), ('fc3', num_class)]
 	for fc_layer in fc_layers:
 		layer_name, num_neuron = fc_layer[0], fc_layer[1]
 		model.add_fc_layer(layer_name, num_neuron, 
