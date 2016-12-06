@@ -7,12 +7,13 @@ from cnn import *
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 
-def snn_f2(train_X, train_y, test_X, test_y, training_steps):
+def snn_f2(train_X, train_y, test_X, test_y):
     """
     A Shallow Neuron Network: 2 fully connected layers
     Architecture: input -> fc1 -> BN -> ReLu -> dropout ->
                         -> fc2 -> BN -> ReLu -> softmax -> output
     """
+    training_steps = 3001
     batch_size = 64
     input_shape = [batch_size, train_X.shape[1]]
     num_class = 10
@@ -67,7 +68,7 @@ def snn_f2(train_X, train_y, test_X, test_y, training_steps):
         print("Done making prediction.")
     return prediction
 
-def cnn_c2f2(train_X, train_y, test_X, test_y, training_steps):
+def cnn_c2f2(train_X, train_y, test_X, test_y):
     """
     A Convolutional Neuron Network: 2 convolutional layers + 2 fully connected layers
     Architecture: input -> conv1 -> BN -> ReLu -> max pool ->
@@ -75,6 +76,7 @@ def cnn_c2f2(train_X, train_y, test_X, test_y, training_steps):
                         -> fc1   -> BN -> ReLu -> dropout  -> 
                         -> fc2   -> BN -> ReLu -> softmax  -> output
     """
+    training_steps = 3001
     train_X = reshape_data(train_X)
     test_X = reshape_data(test_X)
 
@@ -149,7 +151,7 @@ def cnn_c2f2(train_X, train_y, test_X, test_y, training_steps):
     return prediction
 
 
-def cnn_c4f3(train_X, train_y, test_X, test_y, training_steps):
+def cnn_c4f3(train_X, train_y, test_X, test_y):
     """
     A Convolutional Neuron Network: 2 convolutional layers + 2 fully connected layers
     Architecture: input -> conv1 -> BN -> ReLu -> max pool ->
@@ -160,12 +162,13 @@ def cnn_c4f3(train_X, train_y, test_X, test_y, training_steps):
                         -> fc2   -> BN -> ReLu -> dropout  -> 
                         -> fc3   -> BN -> ReLu -> softmax  -> output
     """
+    training_steps = 3001
     train_X = reshape_data(train_X)
     test_X = reshape_data(test_X)
 
     batch_size = 64
     input_shape = [batch_size, 28, 28, 1]
-    conv_depth = 4
+    conv_depth = 2
     num_class = 10
 
     # Build a ConvNet graph
@@ -181,9 +184,10 @@ def cnn_c4f3(train_X, train_y, test_X, test_y, training_steps):
         model.add_batchnorm_layer(layer_name+'/batchnorm', add_output_summary=False)
         model.add_act_layer(layer_name+'/activation')
         model.add_pool_layer(layer_name+'/pool')
+        conv_depth *= 2
 
     fc_wt_initializer = tf.contrib.layers.variance_scaling_initializer()
-    fc_layers = [('fc1', 1024), ('fc2', 512), ('fc3', num_class)]
+    fc_layers = [('fc1', 1024), ('fc2', 1024), ('fc3', num_class)]
     for fc_layer in fc_layers:
         layer_name, num_neuron = fc_layer[0], fc_layer[1]
         model.add_fc_layer(layer_name, num_neuron, 
@@ -193,7 +197,7 @@ def cnn_c4f3(train_X, train_y, test_X, test_y, training_steps):
         if layer_name!='fc3':
             model.add_dropout_layer(layer_name+'/dropout')
 
-    model.setup_learning_rate(0.1, exp_decay=True, decay_steps=500, \
+    model.setup_learning_rate(0.01, exp_decay=True, decay_steps=1000, \
                             decay_rate=0.5, staircase=True, add_output_summary=False)
 
     train_loss = model.compute_train_loss(add_output_summary=False)
@@ -222,11 +226,11 @@ def cnn_c4f3(train_X, train_y, test_X, test_y, training_steps):
                 feed_dict[model.keep_probs[0]] = 1.0
                 feed_dict[model.keep_probs[1]] = 1.0
                 vacc = sess.run(valid_accuracy, feed_dict=feed_dict)
-                if step%10==0:
+                if step%50==0:
                     print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                         %(step, tloss, (tacc*100), (vacc*100)))
             else:
-                if step%10==0:
+                if step%50==0:
                     print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\t' \
                         %(step, tloss, (tacc*100)))
         print("Finished training")
@@ -236,7 +240,7 @@ def cnn_c4f3(train_X, train_y, test_X, test_y, training_steps):
     return prediction
 
 
-def svm_model(train_X, train_y, test_X, test_y, training_steps):
+def svm_model(train_X, train_y, test_X, test_y):
     """
     A Support Vector Machine Model
     """
@@ -257,21 +261,25 @@ def svm_model(train_X, train_y, test_X, test_y, training_steps):
     prediction = clf_obj.predict(test_X)
     return prediction 
 
-def train_model(model, training_steps):
-    '''A function for tuning any one of the models defined above in the models.py'''
+def train_model(model, cnn_mode=True):
+    """
+    A function for tuning any one of the models defined above in the models.py
+    set cnn_mode=False for snn_f2 model and svm_model
+    """
     train_filename = "/Users/Zhongyu/Documents/projects/CNNplayground/mnist/data/train.csv"
     X, y = load_data(train_filename)
     train_X, valid_X, train_y, valid_y = train_test_split(X, y, test_size=2000,
                                          random_state=263, stratify=y)
-    train_X = reshape_data(train_X)
-    valid_X = reshape_data(valid_X)
-    pred = model(train_X, train_y, valid_X, valid_y, training_steps)
+    if cnn_mode:
+        train_X = reshape_data(train_X)
+        valid_X = reshape_data(valid_X)
+    pred = model(train_X, train_y, valid_X, valid_y)
     return pred
     
 if __name__=='__main__':
     # Run train_model func on cnn_c4f3 to tune the model
     model = cnn_c4f3
-    training_steps = 2501
-    pred = train_model(model, training_steps)
+    #model = cnn_c2f2
+    pred = train_model(model, cnn_mode=True)
     
 
