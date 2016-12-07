@@ -56,6 +56,17 @@ def train_kfold():
 
 def bagging(datafile_list):
     '''Load all predictions trained by different models and perform majority vote'''
+    all_train_pred, train_labels, all_test_pred = load_kfold_data(datafile_list)
+    # majority vote
+    train_preds = majority_vote(all_train_pred)
+    train_acc = compute_accuracy(train_labels, train_preds)
+    print("Bagging ensemble %d models results accuracy score of %.2f%%" \
+        %(len(datafile_list), (100*train_acc)))
+    test_preds = majority_vote(all_test_pred)
+    make_submission(test_preds, 'pred4.csv')
+    return test_preds
+
+def load_kfold_data(datafile_list):
     all_test_pred = None
     all_train_pred = None
     for data_file in datafile_list:
@@ -68,28 +79,45 @@ def bagging(datafile_list):
             predict = np.reshape(data['predict'], [-1,1])
             all_test_pred = np.concatenate((all_test_pred, test_pred), axis=1)
             all_train_pred = np.concatenate((all_train_pred, predict), axis=1)
-    # majority vote
-    train_labels = data['labels']
-    train_preds = majority_vote(all_train_pred)
-    train_acc = compute_accuracy(train_labels, train_preds)
-    print("Bagging ensemble %d models results accuracy score of %.2f%%" \
-        %(len(datafile_list), (100*train_acc)))
-    test_preds = majority_vote(all_test_pred)
-    make_submission(test_preds, 'pred4')
-    return test_preds
-
-
+    all_train_labels = data['labels']
+    return all_train_pred, all_train_labels, all_test_pred
+    
 def majority_vote(data):
-	if data.shape[1]%2==0:
-		warnings.warn("Even number of columns, will break tie based on the order.")
-	return np.apply_along_axis(lambda x: np.bincount(x).argmax(), 1, data)
+    if data.shape[1]%2==0:
+        warnings.warn("Even number of columns, will break tie based on the order.")
+    return np.apply_along_axis(lambda x: np.bincount(x).argmax(), 1, data)
 
 def compute_accuracy(label, pred):
-	return 1.0*np.sum(label==pred)/pred.shape[0]
+    return 1.0*np.sum(label==pred)/pred.shape[0]
+
+def bag_models():
+    prefix = 'kfold_data/'
+    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'snn_f2_kfold', 'svm_model_kfold']
+    datafile_list = [prefix+fn for fn in filename]
+    bagging(datafile_list)
+
+def stacking(datafile_list, predictor):
+    train_X, train_y, test_X = load_kfold_data(datafile_list)
+    model = predictor()
+    model.fit(train_X, train_y)
+    train_acc = model.score(train_X, train_y)
+    print("Stacking ensemble %d models results accuracy score of %.2f%%" \
+        %(len(datafile_list), (100*train_acc)))
+    test_pred = model.predict(test_X)
+    make_submission(test_pred, 'pred5.csv')
+    return test_pred
+
+def stack_models():
+    prefix = 'kfold_data/'
+    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'snn_f2_kfold', 'svm_model_kfold']
+    datafile_list = [prefix+fn for fn in filename]
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.ensemble import AdaBoostClassifier
+    from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn.neighbors import KNeighborsClassifier
+    stacking(datafile_list, predictor=RandomForestClassifier)
 
 
 if __name__=='__main__':
-	prefix = 'kfold_data/'
-	filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'snn_f2_kfold', 'svm_model_kfold']
-	datafile_list = [prefix+fn for fn in filename]
-	bagging(datafile_list)
+	#bag_models()
+    stack_models()
