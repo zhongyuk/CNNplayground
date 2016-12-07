@@ -252,14 +252,14 @@ def svm_model(train_X, train_y, test_X, test_y):
     train_accuracy = clf_obj.score(train_X, train_label)
     if test_y is not None:
         valid_accuracy = clf_obj.score(test_X, test_label)
-        print('Train Acc: %.2f%%\tValid Acc: %2.f%%') \
-            %((train_accuracy*100), (valid_accuracy*100))
+        print('Train Acc: %.2f%%\tValid Acc: %2.f%%' \
+            %((train_accuracy*100), (valid_accuracy*100)))
     else:
         print('Train Acc: %.2f%%' %((train_accuracy*100)))
     print("Finished training")
     print("Making perdiction.")
     prediction = clf_obj.predict(test_X)
-    return prediction 
+    return prediction
 
 def train_model(model, cnn_mode=True):
     """
@@ -278,8 +278,9 @@ def train_model(model, cnn_mode=True):
     
 if __name__=='__main__':
     # Run train_model func on cnn_c4f3 to tune the model
-    model = cnn_c4f3
+    #model = cnn_c4f3
     #model = cnn_c2f2
-    pred = train_model(model, cnn_mode=True)
+    model = svm_model
+    pred = train_model(model, cnn_mode=False)
     
 
