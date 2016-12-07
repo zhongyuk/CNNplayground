@@ -251,7 +251,7 @@ def svm_model(train_X, train_y, test_X, test_y):
 	train_accuracy = clf_obj.score(train_X, train_label)
 	if test_y is not None:
 		valid_accuracy = clf_obj.score(test_X, test_label)
-		print('Train Acc: %.2f%%\tValid Acc: %2.f%%' \
+		print('Train Acc: %.2f%%\tValid Acc: %.2f%%' \
 		 	%((train_accuracy*100), (valid_accuracy*100)))
 	else:
 		print('Train Acc: %.2f%%' %((train_accuracy*100)))
