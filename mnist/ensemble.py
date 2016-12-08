@@ -52,7 +52,7 @@ def train_kfold():
 	model_names = [snn_f2, cnn_c2f2, cnn_c4f3, svm_model]
 	data_filenames = ['snn_f2_kfold', 'cnn_c2f2_kfold', 'cnn_c4f3_kfold','svm_model_kfold']
 	for model, data_fn in zip(model_names, data_filenames):
-		data = train_kfold(train_filename, test_filename, K, model, data_fn)
+		data = kfold(train_filename, test_filename, K, model, data_fn)
 
 def bagging(datafile_list):
     '''Load all predictions trained by different models and perform majority vote'''
