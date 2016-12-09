@@ -91,14 +91,15 @@ def compute_accuracy(label, pred):
     return 1.0*np.sum(label==pred)/pred.shape[0]
 
 def bag_models():
+    # experiments show bagging without svm_model_kfold gives better performances
     prefix = 'kfold_data/'
-    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'snn_f2_kfold', 'svm_model_kfold']
+    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold']
     datafile_list = [prefix+fn for fn in filename]
     bagging(datafile_list)
 
-def stacking(datafile_list, predictor):
+def stacking(datafile_list, predictor, **argms):
     train_X, train_y, test_X = load_kfold_data(datafile_list)
-    model = predictor()
+    model = predictor(**argms)
     model.fit(train_X, train_y)
     train_acc = model.score(train_X, train_y)
     print("Stacking ensemble %d models results accuracy score of %.2f%%" \
@@ -109,16 +110,16 @@ def stacking(datafile_list, predictor):
 
 def stack_models():
     prefix = 'kfold_data/'
-    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'snn_f2_kfold', 'svm_model_kfold']
+    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold', 'svm_model_kfold']
     datafile_list = [prefix+fn for fn in filename]
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.neighbors import KNeighborsClassifier
-    stacking(datafile_list, predictor=RandomForestClassifier)
+    stacking(datafile_list, predictor=RandomForestClassifier, n_estimators=25)
 
 
 if __name__=='__main__':
 	train_kfold()
-	bag_models()
+    bag_models()
     stack_models()
