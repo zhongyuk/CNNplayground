@@ -63,8 +63,8 @@ def convnet_model(training_steps):
 	graph = model.get_graph()
 
 	# variables need to be saved
-	train_losses, valid_losses = np.zeros(training_steps), np.zeros(training_steps)
-	train_acc, valid_acc = np.zeros(training_steps), np.zeros(training_steps)
+	train_losses, valid_losses = np.zeros(training_steps), []
+	train_acc, valid_acc = np.zeros(training_steps), []
 
 	with tf.Session(graph=graph) as sess:
 		print("Create summary writers")
@@ -87,16 +87,20 @@ def convnet_model(training_steps):
 										merged_summary], feed_dict=train_feed_dict)
 			train_losses[step], train_acc[step] = tloss, tacc
 			train_writer.add_summary(tmrg_summ, step)
-			feed_dict = dict(model.kp_reference_feed_dict)
-			feed_dict.update({model.train_X : batch_X,
-							  model.train_y : batch_y})
-			vacc, vloss, vmrg_summ = sess.run([valid_accuracy, valid_loss, merged_summary], \
-									 feed_dict=feed_dict)
-			valid_losses[step], valid_acc[step] = vloss, vacc
-			valid_writer.add_summary(vmrg_summ, step)
 			lr = learning_rate.eval()
-			print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%\tTime Cost: %d\tLearning Rate: %.4f' \
-                 %(step, tloss, (tacc*100), (vacc*100), (time.time()-t), lr))
+			print('Epoch: %d\tLoss: %.4d\tTrain Acc:%.2f%%\tTime Cost: %d\tLearning Rate: %.4f'\
+				%(step, tloss, (tacc*100), (time.time()-t), lr))
+			if step%100==0:
+				valid_feed_dict = dict(model.kp_reference_feed_dict)
+				valid_feed_dict.update({model.train_X : batch_X,
+							  	model.train_y : batch_y})
+				vacc, vloss, vmrg_summ = sess.run([valid_accuracy, valid_loss, merged_summary], \
+									 	feed_dict=valid_feed_dict)
+				valid_losses.append(vloss)
+				valid_acc.append(vacc)
+				valid_writer.add_summary(vmrg_summ, step)
+				print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tTime Cost: %d\tLearning Rate: %.4f\tValid Acc: %.2f%%' \
+                 %(step, tloss, (tacc*100),(time.time()-t), lr,  (vacc*100)))
 		print("Finished training")
 		tacc = sess.run(test_accuracy, feed_dict=model.kp_reference_feed_dict)
 		print("Test accuracy: %.2f%%" %(tacc*100))
@@ -113,7 +117,7 @@ if __name__=='__main__':
 	training_steps = raw_input("How many traing steps?")
 	training_data = convnet_model(int(training_steps))
 	save_data_name = 'train_data0.1'
-	with open(save_data_name, 'w') as fh:
-		pickle.dump(training_data, fh)
+	with open(save_data_name, 'wb') as fh:
+		pickle.dump(training_data, fh, protocol=2)
 
 

@@ -49,8 +49,8 @@ def train_kfold():
 	train_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/train.csv"
 	test_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/test.csv"
 	K = 7
-	model_names = [snn_f2, cnn_c2f2, cnn_c4f3, svm_model]
-	data_filenames = ['snn_f2_kfold', 'cnn_c2f2_kfold', 'cnn_c4f3_kfold','svm_model_kfold']
+	model_names = [snn_f2, cnn_c2f2, cnn_c4f3, cnn_c3f2, svm_model]
+	data_filenames = ['snn_f2_kfold', 'cnn_c2f2_kfold', 'cnn_c4f3_kfold','cnn_c3f2_kfold','svm_model_kfold']
 	for model, data_fn in zip(model_names, data_filenames):
 		data = kfold(train_filename, test_filename, K, model, data_fn)
 
@@ -119,5 +119,6 @@ def stack_models():
 
 
 if __name__=='__main__':
-	#bag_models()
+	train_kfold()
+	bag_models()
     stack_models()

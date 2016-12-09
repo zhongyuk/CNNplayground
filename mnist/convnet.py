@@ -89,13 +89,13 @@ def train_model(train_filename, test_filename, training_steps):
 			_, tloss, tacc, tmrg_summ = sess.run([optimizer, train_loss, train_accuracy, \
 										merged_summary], feed_dict=train_feed_dict)
 			train_writer.add_summary(tmrg_summ, step)
-			feed_dict = dict(model.kp_reference_feed_dict)
-			feed_dict.update({model.train_X : batch_X,
-							  model.train_y : batch_y})
-			vacc, vmrg_summ = sess.run([valid_accuracy, merged_summary], \
-								feed_dict=feed_dict)
-			valid_writer.add_summary(vmrg_summ, step)
+			valid_feed_dict = dict(model.kp_reference_feed_dict)
+			valid_feed_dict.update({model.train_X : batch_X,
+							 	    model.train_y : batch_y})
 			if step%50==0:
+				vacc, vmrg_summ = sess.run([valid_accuracy, merged_summary], \
+								feed_dict=valid_feed_dict)
+				valid_writer.add_summary(vmrg_summ, step)
 				print('Epoch: %d\tLoss: %f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                  	%(step, tloss, (tacc*100), (vacc*100)))
 		print("Finished training")
