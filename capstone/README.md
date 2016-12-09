@@ -1,5 +1,5 @@
 ## Image Classification using Convolutional Neural Network 
-*Udacity Machine Learning Nanodegree Capstone Project *
+**Udacity Machine Learning Nanodegree Capstone Project**
 
 #### Dataset
 [CIFAR-10](http://www.cs.utoronto.ca/~kriz/cifar.html)
@@ -7,11 +7,13 @@
 #### Programming Language
 Python 2.7
 
-#### Software Dependencies
-- TensorFlow
-- Numpy
-- scikit-learn
-- matplotlib
+#### Library Dependencies
+- TensorFlow r0.11
+- numpy 1.11.2
+- scipy 0.18.1
+- scikit-learn 0.18.1
+- matplotlib 1.5.3
+- jupyter 1.0.0
 
 #### Files Explained
 - **In /code directory**

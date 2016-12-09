@@ -1,7 +1,7 @@
 """
 Ensemble Methods: Bagging and Stacking 
-train_kfold is a function for performaning the first stage of ensemble stacking model fitting.
-train_stack ...
+kfold is a function for performaning the first stage of ensemble stacking model fitting.
+stacking is a function for performing the second stage of ensemble stacking multiple models.
 bagging is a ensemble technique for collecting predictions of several predictors and 
 performing majority vote to conclude the final predictions.
 """
