@@ -86,6 +86,9 @@ def convnet_model(training_steps):
 										merged_summary], feed_dict=feed_dict)
 			train_losses[step], train_acc[step] = tloss, tacc
 			train_writer.add_summary(tmrg_summ, step)
+            lr = learning_rate.eval()
+            print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tTime Cost: %d\tLearning Rate: %.4f' \
+                    %(step, tloss, (tacc*100), (time.time()-t), lr))
             if step%100==0:
                 feed_dict[model.keep_probs[0]] = 1.0
                 feed_dict[model.keep_probs[1]] = 1.0
@@ -94,9 +97,8 @@ def convnet_model(training_steps):
                 valid_losses.append(vloss)
                 valid_acc.append(vacc)
                 valid_writer.add_summary(vmrg_summ, step)
-                lr = learning_rate.eval()
-                print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%\tTime Cost: %d\tLearning Rate: %.4f' \
-                    %(step, tloss, (tacc*100), (vacc*100), (time.time()-t), lr))
+                print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tTime Cost: %d\tLearning Rate: %.4f\tValid Acc: %.2f%%\t' \
+                    %(step, tloss, (tacc*100), (time.time()-t), lr, (vacc*100)))
 		print("Finished training")
 		tacc = sess.run(test_accuracy, feed_dict={model.keep_probs[0] : 1.0, model.keep_probs[1]:1.0})
 		print("Test accuracy: %.2f%%" %(tacc*100))

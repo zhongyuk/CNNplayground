@@ -95,9 +95,9 @@ def bag_models():
     datafile_list = [prefix+fn for fn in filename]
     bagging(datafile_list)
 
-def stacking(datafile_list, predictor):
+def stacking(datafile_list, predictor, **argms):
     train_X, train_y, test_X = load_kfold_data(datafile_list)
-    model = predictor()
+    model = predictor(**argms)
     model.fit(train_X, train_y)
     train_acc = model.score(train_X, train_y)
     print("Stacking ensemble %d models results accuracy score of %.2f%%" \
@@ -114,7 +114,7 @@ def stack_models():
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.neighbors import KNeighborsClassifier
-    stacking(datafile_list, predictor=RandomForestClassifier)
+    stacking(datafile_list, predictor=RandomForestClassifier, n_estimators=25)
 
 if __name__=='__main__':
     train_kfold()
