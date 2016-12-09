@@ -89,11 +89,11 @@ def train_model(train_filename, test_filename, training_steps):
                                         merged_summary], feed_dict=feed_dict)
             train_writer.add_summary(tmrg_summ, step)
             feed_dict[model.keep_probs[0]] = 1.0
-            feed_dict[model.keep_probs[1]] = 1.0
-            vacc, vmrg_summ = sess.run([valid_accuracy, merged_summary], \
-                                feed_dict=feed_dict)
-            valid_writer.add_summary(vmrg_summ, step)
             if step%50==0:
+                feed_dict[model.keep_probs[1]] = 1.0
+                vacc, vmrg_summ = sess.run([valid_accuracy, merged_summary], \
+                                feed_dict=feed_dict)
+                valid_writer.add_summary(vmrg_summ, step)
                 print('Epoch: %d\tLoss: %f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%' \
                     %(step, tloss, (tacc*100), (vacc*100)))
         print("Finished training")
@@ -105,8 +105,8 @@ def train_model(train_filename, test_filename, training_steps):
     return kaggle_pred
 
 if __name__=="__main__":
-    train_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/train.csv"
-    test_filename = "/Users/Zhongyu/Documents/projects/kaggle/mnist/test.csv"
+    train_filename = "/Users/Zhongyu/Documents/projects/CNNplayground/mnist/data/train.csv"
+    test_filename = "/Users/Zhongyu/Documents/projectsCNNplayground/mnist/data/test.csv"
     training_steps = raw_input("How many traing steps?")
     predictions = train_model(train_filename, test_filename, int(training_steps))
     make_submission(predictions, "pred3.csv")

@@ -63,8 +63,8 @@ def convnet_model(training_steps):
 	graph = model.get_graph()
 
 	# variables need to be saved
-	train_losses, valid_losses = np.zeros(training_steps), np.zeros(training_steps)
-	train_acc, valid_acc = np.zeros(training_steps), np.zeros(training_steps)
+	train_losses, valid_losses = np.zeros(training_steps),[]
+	train_acc, valid_acc = np.zeros(training_steps),[]
 
 	with tf.Session(graph=graph) as sess:
 		print("Create summary writers")
@@ -86,15 +86,17 @@ def convnet_model(training_steps):
 										merged_summary], feed_dict=feed_dict)
 			train_losses[step], train_acc[step] = tloss, tacc
 			train_writer.add_summary(tmrg_summ, step)
-			feed_dict[model.keep_probs[0]] = 1.0
-			feed_dict[model.keep_probs[1]] = 1.0
-			vacc, vloss, vmrg_summ = sess.run([valid_accuracy, valid_loss, merged_summary], \
-									 feed_dict=feed_dict)
-			valid_losses[step], valid_acc[step] = vloss, vacc
-			valid_writer.add_summary(vmrg_summ, step)
-			lr = learning_rate.eval()
-			print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%\tTime Cost: %d\tLearning Rate: %.4f' \
-                 %(step, tloss, (tacc*100), (vacc*100), (time.time()-t), lr))
+            if step%100==0:
+                feed_dict[model.keep_probs[0]] = 1.0
+                feed_dict[model.keep_probs[1]] = 1.0
+                vacc, vloss, vmrg_summ = sess.run([valid_accuracy, valid_loss, merged_summary], \
+                                        feed_dict=feed_dict)
+                valid_losses.append(vloss)
+                valid_acc.append(vacc)
+                valid_writer.add_summary(vmrg_summ, step)
+                lr = learning_rate.eval()
+                print('Epoch: %d\tLoss: %.4f\tTrain Acc: %.2f%%\tValid Acc: %.2f%%\tTime Cost: %d\tLearning Rate: %.4f' \
+                    %(step, tloss, (tacc*100), (vacc*100), (time.time()-t), lr))
 		print("Finished training")
 		tacc = sess.run(test_accuracy, feed_dict={model.keep_probs[0] : 1.0, model.keep_probs[1]:1.0})
 		print("Test accuracy: %.2f%%" %(tacc*100))
@@ -111,7 +113,7 @@ if __name__=='__main__':
 	training_steps = input("How many traing steps?")
 	training_data = convnet_model(int(training_steps))
 	save_data_name = 'train_data0.1'
-	with open(save_data_name, 'w') as fh:
-		pickle.dump(training_data, fh)
+	with open(save_data_name, 'wb') as fh:
+		pickle.dump(training_data, fh, protocol=2)
 
 
