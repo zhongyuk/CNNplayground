@@ -15,9 +15,9 @@ def convnet_model(training_steps):
 	valid_dataset, valid_labels = dataset_list[2], dataset_list[3]
 	test_dataset , test_labels  = dataset_list[4], dataset_list[5]
 
-	batch_size = 32
+	batch_size = 128
 	input_shape = [batch_size, 32, 32, 3]
-	conv_depth = 4
+	conv_depth = 32
 	num_class = 10
 
 	# Build a convnet graph
@@ -43,8 +43,8 @@ def convnet_model(training_steps):
 		if layer_name!='fc3':
 			model.add_dropout_layer(layer_name+"/dropout")
 
-	model.setup_learning_rate(0.01, exp_decay=True, decay_steps=200, \
-							 decay_rate=0.95, staircase=False,)
+	model.setup_learning_rate(0.01, exp_decay=True, decay_steps=2000, \
+							 decay_rate=0.80, staircase=True)
 
 	train_loss = model.compute_train_loss(add_output_summary=False)
 	valid_loss = model.compute_valid_loss()
@@ -88,9 +88,10 @@ def convnet_model(training_steps):
 			train_losses[step], train_acc[step] = tloss, tacc
 			train_writer.add_summary(tmrg_summ, step)
 			lr = learning_rate.eval()
-			print('Epoch: %d\tLoss: %.4d\tTrain Acc:%.2f%%\tTime Cost: %d\tLearning Rate: %.4f'\
+			if (step%100==0) and (step%500!=0):
+				print('Epoch: %d\tLoss: %.4d\tTrain Acc:%.2f%%\tTime Cost: %d\tLearning Rate: %.4f'\
 				%(step, tloss, (tacc*100), (time.time()-t), lr))
-			if step%100==0:
+			elif step%500==0:
 				valid_feed_dict = dict(model.kp_reference_feed_dict)
 				valid_feed_dict.update({model.train_X : batch_X,
 							  	model.train_y : batch_y})
@@ -114,7 +115,8 @@ def convnet_model(training_steps):
 	return training_data
 
 if __name__=='__main__':
-	training_steps = raw_input("How many traing steps?")
+	#training_steps = raw_input("How many traing steps?")
+	training_steps = 10001
 	training_data = convnet_model(int(training_steps))
 	save_data_name = 'train_data0.1'
 	with open(save_data_name, 'wb') as fh:
