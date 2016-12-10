@@ -27,10 +27,10 @@
 #### Files Explained
 - **/capstone directory** contains the code, notebooks, data, and report for the Udacity Machine Learning Nanodegree capstone project.
 
-- **cifar10 directory** stores the code and files for further exploring the CIFAR10 dataset using deep learning techniques after the Udacity Machine Learning Nanodegree capstone project.
+- **/cifar10 directory** stores the code and files for further exploring the CIFAR10 dataset using deep learning techniques after the Udacity Machine Learning Nanodegree capstone project.
 
-- **mnist directory** is a project for building a digit recoginizer upon MNIST dataset (incorporating kaggle playgorund competition) using machine learning and deep learning techniques.
+- **/mnist directory** is a project for building a digit recoginizer upon MNIST dataset (incorporating kaggle playgorund competition) using machine learning and deep learning techniques.
 
-- **studybn directory** contains a few scripts for studying and testing bach normalization and a notebook for demonstrating how to properly use TensorFlow `tf.contrib.layers.batch_norm`. 
+- **/studybn directory** contains a few scripts for studying and testing bach normalization and a notebook for demonstrating how to properly use TensorFlow `tf.contrib.layers.batch_norm`. 
 
 - **cnn.py and test_cnn.py**: the former is a quick wrapper building on top of TensorFlow to enable an easier and faster usage for building a CNN model (note that only the commonly recommended/default model building options are included and implemented in `cnn.py`); the latter performs unit testing on the interfaces provided by `cnn.py`.
