@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 def unpickle(file):
     # Load pickled data
     fo = open(file, 'rb')
-    dict = pickle.load(fo)
+    dict = pickle.load(fo, encoding='latin1')
     fo.close()
     return dict
 
