@@ -60,7 +60,7 @@ def bagging(datafile_list):
     # majority vote
     train_preds = majority_vote(all_train_pred)
     train_acc = compute_accuracy(train_labels, train_preds)
-    print("Bagging ensemble %d models results accuracy score of %.2f%%" \
+    print("Bagging ensemble %d models results accuracy score of %.4f%%" \
         %(len(datafile_list), (100*train_acc)))
     test_preds = majority_vote(all_test_pred)
     make_submission(test_preds, 'pred4.csv')
@@ -94,7 +94,8 @@ def bag_models():
     # experiments show bagging without svm_model_kfold gives better performances
     prefix = 'kfold_data/'
     filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold', 
-                'cnn_3c1f2_kfold','cnn_5c1f2_kfold','cnn_5c2f2_kfold']
+                'cnn_3c1f2_kfold','cnn_5c1f2_kfold','cnn_5c2f2_kfold','cnn_mc2f2_kfold',
+                'cnn_3c2f1_kfold']#,'cnn_mc2f1_kfold'
     datafile_list = [prefix+fn for fn in filename]
     bagging(datafile_list)
 
@@ -103,7 +104,7 @@ def stacking(datafile_list, predictor, **argms):
     model = predictor(**argms)
     model.fit(train_X, train_y)
     train_acc = model.score(train_X, train_y)
-    print("Stacking ensemble %d models results accuracy score of %.2f%%" \
+    print("Stacking ensemble %d models results accuracy score of %.4f%%" \
         %(len(datafile_list), (100*train_acc)))
     test_pred = model.predict(test_X)
     make_submission(test_pred, 'pred5.csv')
@@ -111,14 +112,15 @@ def stacking(datafile_list, predictor, **argms):
 
 def stack_models():
     prefix = 'kfold_data/'
-    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold', 'svm_model_kfold',
-                'cnn_1c1f2_kfold','cnn_3c1f2_kfold','cnn_5c1f2_kfold','cnn_5c2f2_kfold']
+    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold', 'svm_model_kfold', 
+                'cnn_1c1f2_kfold','cnn_3c1f2_kfold','cnn_5c1f2_kfold','cnn_5c2f2_kfold','cnn_mc2f2_kfold',
+                'cnn_3c2f1_kfold', 'cnn_5c2f1_kfold','cnn_mc2f1_kfold']
     datafile_list = [prefix+fn for fn in filename]
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.ensemble import AdaBoostClassifier
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.neighbors import KNeighborsClassifier
-    stacking(datafile_list, predictor=RandomForestClassifier, n_estimators=25)
+    stacking(datafile_list, predictor=RandomForestClassifier, n_estimators=60)
 
 
 if __name__=='__main__':
