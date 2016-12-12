@@ -9,7 +9,7 @@ class layer(object):
 	__metaclass__ = abc.ABCMeta
 
 	# static class variable
-	LAYER_TYPES = ['conv2d', 'fc', 'activation', 'batchnorm', 'dropout', 'pool2d']
+	LAYER_TYPES = ['conv2d', 'fc', 'activation', 'batchnorm', 'dropout', 'pool2d', 'convInception']
 	
 	@abc.abstractmethod
 	def get_layer_name(self):
@@ -398,6 +398,77 @@ class batchnorm(layer):
 		if add_output_summary:
 				tf.histogram_summary(self._layer_name, output)
 		return output
+
+class convInception(layer):
+	'''A fixed 2D conv inception layer: 1x1, 3x3, and 5x5 filters'''
+
+	TRAINABLE = True
+	FULLNAME = "2D Convolution Inception Layer"
+
+	def __init__(self, layer_name, input_depth, output_depth, stride=1, padding='SAME'):
+		self._layer_name = layer_name
+		self._stride = stride
+		self._padding = padding
+		self._wt_initializer = tf.truncated_normal_initializer(stddev=.01)
+		self._bi_initializer = tf.constant_initializer(1.0)
+		self._inception = self._build_inception(input_depth, output_depth, stride, padding)
+
+	def _build_inception(self, input_depth, output_depth, stride, padding):
+		conv1x1 = conv2d('1x1', [1,1,input_depth, output_depth], stride, padding)
+		conv3x3 = conv2d('3x3', [3,3,input_depth, output_depth], stride, padding)
+		conv5x5 = conv2d('5x5', [5,5,input_depth, output_depth], stride, padding)
+		inception = {conv1x1.get_layer_name() : conv1x1,
+					 conv3x3.get_layer_name() : conv3x3,
+					 conv5x5.get_layer_name() : conv5x5}
+		return inception
+
+	def get_layer_name(self):
+		return self._layer_name
+
+	def get_layer_type(self):
+		return convInception.FULLNAME
+
+	def is_trainable(self):
+		return convInception.TRAINABLE
+
+	def get_inception_unit(self, name):
+		if name not in ['1x1', '3x3', '5x5']:
+			raise ValueError("name has to be '1x1', '3x3', or '5x5'")
+		return self._inception[name]
+
+	def initialize(self, wt_initializer=None, bi_initializer=None):
+		if wt_initializer:
+			self._wt_initializer = wt_initializer
+		if bi_initializer:
+			self._bi_initializer = bi_initializer
+
+		with tf.variable_scope(self._layer_name, reuse=None) as scope:
+			for conv_layer in self._inception.values():
+				conv_layer.initialize(None, self._wt_initializer, self._bi_initializer)
+
+	def get_variables(self):
+		variables = {}
+		with tf.variable_scope(self._layer_name, reuse=True):
+			for name, conv_layer in self._inception.items():
+				wt, bi = conv_layer.get_variables()
+				var_dict = {'weight' : wt, 'biase' : bi}
+				variables[name] = var_dict
+		return variables
+
+	def add_variable_summaries(self):
+		with tf.variable_scope(self._layer_name, reuse=True):
+			for conv_layer in self._inception.values():
+				conv_layer.add_variable_summaries()
+
+	def train(self, input, add_output_summary=True):
+		outputs = {}
+		with tf.variable_scope(self._layer_name, reuse=True):
+			for name, conv_layer in self._inception.items():
+				outputs[name] = conv_layer.train(input, add_output_summary)
+			tensor_list = list(zip(*sorted(outputs.items(), key=lambda x: x[0]))[1])
+			output = tf.concat(3, tensor_list)
+			return output
+
 
 class keep_prob_collection(object):
 	"""

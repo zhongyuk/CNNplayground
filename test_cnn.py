@@ -171,6 +171,39 @@ def test_batchnorm(steps):
 		print "output", "-"*16; print y_val1
 		assert(np.array_equal(y_val1, y_val2))
 
+def test_convInception(steps):
+	sess = tf.InteractiveSession()
+	convIncept1 = convInception('convIncept1', 3, 2)
+	assert(convIncept1.get_layer_name()=='convIncept1')
+	assert(convIncept1.get_layer_type()=='2D Convolution Inception Layer')
+	assert(convIncept1.is_trainable()==True)
+	assert(convIncept1.get_inception_unit('1x1').get_shape()==[1,1,3,2])
+	assert(convIncept1.get_inception_unit('3x3').get_shape()==[3,3,3,2])
+	assert(convIncept1.get_inception_unit('5x5').get_shape()==[5,5,3,2])
+	try:
+		convIncept1.get_inception_unit('2x2')
+	except ValueError:
+		print("successfully catch wrong name error.")
+	convIncept1.initialize()
+	convIncept1.add_variable_summaries()
+	variables = convIncept1.get_variables()
+	assert(sorted(variables.keys())==['1x1','3x3','5x5'])
+	sess.run([tf.initialize_all_variables()])
+	wt_val, bi_val = sess.run([variables['1x1']['weight'], variables['1x1']['biase']])
+	print "initialized weights:", wt_val
+	print "initialized biases:", bi_val
+
+	input = tf.placeholder(tf.float32, [4, 2, 2, 3])
+	for i in range(steps):
+		X_np = np.random.randn(4, 2, 2, 3)
+		print '*'*16, i, '*'*16
+		y = convIncept1.train(input)
+		y_val = sess.run(y, feed_dict={input:X_np})
+		assert(y_val.shape[3]==6)
+		print y.eval(feed_dict={input:X_np})
+	sess.close()
+
+
 def test_keep_prob_collection():
 	keep_probs = keep_prob_collection()
 	sess = tf.InteractiveSession()
@@ -325,9 +358,13 @@ if __name__=='__main__':
 	if test_dropout_bool=='y':
 		test_dropout(2)
 
-	test_batchnorm_bool =raw_input("Test batchnorm layer? [y] or [n]")
+	test_batchnorm_bool = raw_input("Test batchnorm layer? [y] or [n]")
 	if test_batchnorm_bool=='y':
 		test_batchnorm(2)
+
+	test_convInception_bool = raw_input("Test convInception layer? [y] or [n]")
+	if test_convInception_bool=='y':
+		test_convInception(2)
 
 	test_cnn_graph_bool = raw_input("Test cnn_graph? [y] or [n]")
 	if test_cnn_graph_bool=='y':
