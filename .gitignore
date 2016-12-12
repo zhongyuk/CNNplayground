@@ -25,3 +25,7 @@ studybn/mldata*
 
 # csv files
 *.csv
+
+# some pickled mnist datafiles
+mnist/kfold_data/cnn_*c1f2_kfold
+mnist/kfold_data/cnn_*c2f2_kfold

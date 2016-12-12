@@ -93,7 +93,8 @@ def compute_accuracy(label, pred):
 def bag_models():
     # experiments show bagging without svm_model_kfold gives better performances
     prefix = 'kfold_data/'
-    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold']
+    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold', 
+                'cnn_3c1f2_kfold','cnn_5c1f2_kfold','cnn_5c2f2_kfold']
     datafile_list = [prefix+fn for fn in filename]
     bagging(datafile_list)
 
@@ -110,7 +111,8 @@ def stacking(datafile_list, predictor, **argms):
 
 def stack_models():
     prefix = 'kfold_data/'
-    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold', 'svm_model_kfold']
+    filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold', 'svm_model_kfold',
+                'cnn_1c1f2_kfold','cnn_3c1f2_kfold','cnn_5c1f2_kfold','cnn_5c2f2_kfold']
     datafile_list = [prefix+fn for fn in filename]
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.ensemble import AdaBoostClassifier
@@ -120,6 +122,6 @@ def stack_models():
 
 
 if __name__=='__main__':
-	train_kfold()
+	#train_kfold()
     bag_models()
     stack_models()
