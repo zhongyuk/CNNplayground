@@ -114,7 +114,7 @@ def stack_models():
     prefix = 'kfold_data/'
     filename = ['cnn_c2f2_kfold', 'cnn_c4f3_kfold', 'cnn_c3f2_kfold', 'snn_f2_kfold', 'svm_model_kfold', 
                 'cnn_1c1f2_kfold','cnn_3c1f2_kfold','cnn_5c1f2_kfold','cnn_5c2f2_kfold','cnn_mc2f2_kfold',
-                'cnn_3c2f1_kfold', 'cnn_5c2f1_kfold','cnn_mc2f1_kfold']
+                'cnn_3c2f1_kfold', 'cnn_5c2f1_kfold','cnn_mc2f1_kfold','cnn_7c2f1_kfold']
     datafile_list = [prefix+fn for fn in filename]
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.ensemble import AdaBoostClassifier

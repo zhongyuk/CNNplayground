@@ -253,6 +253,7 @@ def test_cnn_graph(steps):
 	conv1_pool_layer = cnn_model.get_layers()[-1]
 	assert(conv1_pool_layer['layer_name']=='conv1/pool')
 	assert(conv1_pool_layer['layer_shape']==[-1, 16, 16, 4])
+
 	cnn_model.add_conv2d_layer("conv2", 3, conv_depth, wt_initializer)
 	conv2_layer_shape = cnn_model.get_layers()[-1]['layer_shape']
 	assert(conv2_layer_shape==[-1, 16, 16, 4])
@@ -268,6 +269,19 @@ def test_cnn_graph(steps):
 	conv2_pool_layer = cnn_model.get_layers()[-1]
 	assert(conv2_pool_layer['layer_name']=='conv2/pool')
 	assert(conv2_pool_layer['layer_shape']==[-1, 8, 8, 4])
+
+	cnn_model.add_convIncept_layer("convIncept3", conv_depth, wt_initializer)
+	convIncept3_layer_shape = cnn_model.get_layers()[-1]['layer_shape']
+	assert(convIncept3_layer_shape==[-1, 8, 8, 12])
+	cnn_model.add_act_layer('convIncept3/activation')
+	convIncept3_act_layer = cnn_model.get_layers()[-1]
+	assert(convIncept3_act_layer['layer_name']=='convIncept3/activation')
+	assert(convIncept3_act_layer['layer_shape']==[-1, 8, 8, 12])
+	cnn_model.add_pool_layer("convIncept3/pool", pool_func=tf.nn.avg_pool)
+	convIncept3_pool_layer = cnn_model.get_layers()[-1]
+	assert(convIncept3_pool_layer['layer_name']=='convIncept3/pool')
+	assert(convIncept3_pool_layer['layer_shape']==[-1, 4, 4, 12])
+
 	cnn_model.add_fc_layer("fc1", 64, wt_initializer)
 	fc1_layer = cnn_model.get_layers()[-1]
 	assert(fc1_layer['layer_shape']==[-1, 64])
@@ -283,6 +297,7 @@ def test_cnn_graph(steps):
 	fc1_dropout_layer = cnn_model.get_layers()[-1]
 	assert(fc1_dropout_layer['layer_name']=='fc1/dropout')
 	assert(fc1_dropout_layer['layer_shape']==[-1, 64])
+
 	cnn_model.add_fc_layer("fc2", 10, wt_initializer)
 	fc2_layer = cnn_model.get_layers()[-1]
 	assert(fc2_layer['layer_shape']==[-1, 10])

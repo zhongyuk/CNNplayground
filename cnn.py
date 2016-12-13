@@ -405,18 +405,19 @@ class convInception(layer):
 	TRAINABLE = True
 	FULLNAME = "2D Convolution Inception Layer"
 
-	def __init__(self, layer_name, input_depth, output_depth, stride=1, padding='SAME'):
+	def __init__(self, layer_name, input_depth, output_depth, stride=1):
 		self._layer_name = layer_name
 		self._stride = stride
-		self._padding = padding
+		# fix padding to be 'SAME' so that output tensors can concatenate easily
+		self._padding = 'SAME'
 		self._wt_initializer = tf.truncated_normal_initializer(stddev=.01)
 		self._bi_initializer = tf.constant_initializer(1.0)
-		self._inception = self._build_inception(input_depth, output_depth, stride, padding)
+		self._inception = self._build_inception(input_depth, output_depth, self._stride)
 
-	def _build_inception(self, input_depth, output_depth, stride, padding):
-		conv1x1 = conv2d('1x1', [1,1,input_depth, output_depth], stride, padding)
-		conv3x3 = conv2d('3x3', [3,3,input_depth, output_depth], stride, padding)
-		conv5x5 = conv2d('5x5', [5,5,input_depth, output_depth], stride, padding)
+	def _build_inception(self, input_depth, output_depth, stride):
+		conv1x1 = conv2d('1x1', [1,1,input_depth, output_depth], stride, self._padding)
+		conv3x3 = conv2d('3x3', [3,3,input_depth, output_depth], stride, self._padding)
+		conv5x5 = conv2d('5x5', [5,5,input_depth, output_depth], stride, self._padding)
 		inception = {conv1x1.get_layer_name() : conv1x1,
 					 conv3x3.get_layer_name() : conv3x3,
 					 conv5x5.get_layer_name() : conv5x5}
@@ -583,6 +584,25 @@ class cnn_graph(object):
 			self._all_layers.append({'layer_name'   : layer_name,
 									 'layer_shape'  : output_layer_shape,
 									 'layer_obj'    : conv_layer})
+
+	def add_convIncept_layer(self, layer_name, output_depth, wt_initializer=None,
+							 bi_initializer=None, stride=1, add_output_summary=True):
+		all_layer_names = [l['layer_name'] for l in self._all_layers]
+		if layer_name in all_layer_names:
+			raise ValueError("layer_name already exists. Please use a different layer name!")
+		prev_layer_shape = self._all_layers[-1]['layer_shape']
+		input_depth = prev_layer_shape[-1]
+		with self._graph.as_default():
+			convIncept_layer = convInception(layer_name, input_depth, output_depth)
+			convIncept_layer.initialize(wt_initializer=wt_initializer, bi_initializer=bi_initializer)
+			if add_output_summary:
+				convIncept_layer.add_variable_summaries()
+			spacial_length = math.ceil(prev_layer_shape[1]/float(stride))
+			output_layer_shape = [prev_layer_shape[0], spacial_length, spacial_length, output_depth*3]
+			self._all_layers.append({'layer_name'   : layer_name,
+									 'layer_shape'  : output_layer_shape,
+									 'layer_obj'	: convIncept_layer})
+
 
 	def add_fc_layer(self, layer_name, out_shape, wt_initializer=None, 
 					bi_initializer=None, add_output_summary=True):
@@ -809,7 +829,8 @@ class cnn_graph(object):
 
 
 if __name__=='__main__':
-	pass
+	import os
+	os.system('python test_cnn.py')
 
 
 
