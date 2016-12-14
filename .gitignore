@@ -30,3 +30,4 @@ studybn/mldata*
 mnist/kfold_data/cnn_*c1f2_kfold
 mnist/kfold_data/cnn_*c2f2_kfold
 mnist/kfold_data/cnn_*c2f1_kfold
+mnist/kfold_data/cnn_incept*f*_kfold
