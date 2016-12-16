@@ -3,6 +3,7 @@ Provide functions for preprocessing image inputs into (convolutional) neural net
 center_data: de-mean data for each feature and produces zero-mean data
 pca_whiten: PCA whitening de-meaned data
 zca_whiten: ZCA whitening de-meaned data
+Implementation reference: http://ufldl.stanford.edu/wiki/index.php/Implementing_PCA/Whitening
 
 Data Augmentation Utilities:
 random_rotate:
@@ -24,37 +25,43 @@ def center_data(X, axis=0):
 
 def pca_whiten(X):
 	"""
+	Principle Component Analysis - Data Whitening 
 	Perform PCA whitening on data matrix X
 	X needs to be a centered/de-meaned 2D numpy array with shape of nxm.
 	n - number of samples;
 	m - number of features.
 	Using scipy linalg libaray instead of numpy linalg library due to that 
 	scipy wrapper is more complete than numpy.
+	Using svd instead of eigh for svd's numerical stability.
+	epsilon for ensuring numerical stability and prevent from zero devision.
 	"""
-	epsilon = 1e-15
-	Xcov = np.dot(X.T, X)
-	eigVal, eigVec = eigh(Xcov)
-	eigVal_diag = np.diag(eigVal+epsilon)
-	whiten_factor = np.sqrt(eigVal_diag)
-	whiten_factor = np.dot(whiten_factor, eigVec.T)
+	epsilon = 1e-8
+	sigma = np.dot(X.T, X)/X.shape[0]
+	u, s, v = svd(sigma)
+	s_sqrt = 1.0/np.sqrt(s + epsilon)
+	s_diag = np.diag(s_sqrt)
+	whiten_factor = np.dot(s_diag, u.T)
 	X_whitened = np.dot(X, whiten_factor)
 	return X_whitened
 
 def zca_whiten(X):
 	"""
-	Perform PCA whitening on data matrix X
+	Zero-phase Component Analysis - Data Whitenening - link to Independent Component Aanalysis
+	Perform ZCA whitening on data matrix X
 	X needs to be a centered/de-meaned 2D numpy array with shape of nxm.
 	n - number of samples;
 	m - number of features.
 	Using scipy linalg libaray instead of numpy linalg library due to that 
 	scipy wrapper is more complete than numpy.
+	Using svd instead of eigh for svd's numerical stability.
+	epsilon for ensuring numerical stability and prevent from zero devision.
 	"""
-	epsilon = 1e-15
-	Xcov = np.dot(X.T, X)
-	eigVal, eigVec = eigh(Xcov)
-	eigVal_diag = np.diag(eigVal+epsilon)
-	eigVal_sqrt = np.sqrt(eigVal_diag)
-	whiten_factor = np.dot(np.dot(eigVec, eigVal_sqrt), eigVec.T)
+	epsilon = 1e-8
+	sigma = np.dot(X.T, X)/X.shape[0]
+	u, s, v = svd(sigma)
+	s_sqrt = 1.0/np.sqrt(s + epsilon)
+	s_diag = np.diag(s_sqrt)
+	whiten_factor = np.dot(np.dot(u, s_diag), u.T)
 	X_whitened = np.dot(X, whiten_factor)
 	return X_whitened
 
