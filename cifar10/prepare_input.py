@@ -1,6 +1,9 @@
 import numpy as np
 from six.moves import cPickle as pickle
 from sklearn.model_selection import train_test_split
+import sys
+sys.path.append("/Users/Zhongyu/Documents/projects/CNNplayground/")
+from preprocess import *
 
 def unpickle(file):
     # Load pickled data
@@ -62,12 +65,12 @@ def preprocess_data(X, y, num_labels):
     # 2) One-hot encode labels
     # 3) Random Permute samples
     # 4) Change datatype to np.float32 to speed up
-    avg = np.mean(X, 0)
-    repeat_avg = np.broadcast_to(avg, X.shape)
-    X_centered = X - repeat_avg
+    # zero-mean and zca-whitening
+    X_centered = center_data(X)
+    X_whitened = zca_whiten(X_centered)
     y_encoded = np.arange(num_labels)==y[:, None]
     perm = np.random.permutation(y_encoded.shape[0])
-    X_centered = X_centered[perm]
+    X_preprocessed = X_whitened[perm]
     y_encoded = y_encoded[perm]
     return X_centered.astype(np.float32), y_encoded.astype(np.float32)
 

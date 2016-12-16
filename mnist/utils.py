@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 from six.moves import cPickle as pickle
 from sklearn import preprocessing
+import sys
+sys.path.append("/Users/Zhongyu/Documents/projects/CNNplayground/")
+from preprocess import *
 
 def load_data(data_filename):
 	data = pd.read_csv(data_filename)
@@ -12,16 +15,20 @@ def load_data(data_filename):
 		y = None
 		X = data
 	X = X.as_matrix()
-	X = preprocess_data(X)
-	X = X.astype(np.float32)
+	# zero-mean and zca-whitening
+	X_centered = center_data(X)
+	X_whitened = zca_whiten(X_centered)
+	#X_whitened = preprocess_data(X)
+	X_preprocessed = X_whitened.astype(np.float32)
 	if y is not None:
 		y = y.as_matrix().astype(np.float32)
 		y = np.arange(10)==y[:, None]
 		y = y.astype(np.float32)
 		y = np.squeeze(y, axis=1)
-	return X, y
+	return X_preprocessed, y
 
-def preprocess_data(X): #consider add whitening
+def preprocess_data(X):
+	'''A simple preprocess func for zero-mean and unity-variance transformation'''
 	X_scaled = preprocessing.scale(X)
 	return X_scaled
 
