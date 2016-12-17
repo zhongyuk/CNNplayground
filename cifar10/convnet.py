@@ -17,16 +17,16 @@ def convnet_model(training_steps):
 
     batch_size = 256
     input_shape = [batch_size, 32, 32, 3]
-    conv_depth = 10
+    conv_depths = [8, 8, 12]
     num_class = 10
 
     # Build a convnet graph
     model = cnn_graph(input_shape, num_class)
     model.setup_data(batch_size, test_dataset, test_labels, valid_dataset, valid_labels)
     conv_wt_initializer = tf.truncated_normal_initializer(stddev=.15)
-    conv_layers = [('conv1', 5), ('conv2', 5), ('conv3', 5) ]
+    conv_layers = [('conv1', 5), ('conv2', 7), ('conv3', 5) ]
 
-    for conv_layer in conv_layers:
+    for conv_layer, conv_depth in zip(conv_layers, conv_depths):
         layer_name, filter_size = conv_layer[0], conv_layer[1]
         model.add_conv2d_layer(layer_name, filter_size, conv_depth,  conv_wt_initializer)
         model.add_batchnorm_layer(layer_name+"/batchnorm")
@@ -34,7 +34,7 @@ def convnet_model(training_steps):
         model.add_pool_layer(layer_name+"/pool")
 
     fc_wt_initializer = tf.contrib.layers.variance_scaling_initializer()
-    fc_layers = [("fc1", 512), ('fc2', 128), ('fc3', num_class)]
+    fc_layers = [("fc1", 1024), ('fc2', 512), ('fc3', num_class)]
     for fc_layer in fc_layers:
         layer_name, num_neuron = fc_layer[0], fc_layer[1]
         model.add_fc_layer(layer_name, num_neuron, fc_wt_initializer)
@@ -106,7 +106,7 @@ def convnet_model(training_steps):
         tacc = sess.run(test_accuracy, feed_dict={model.keep_probs[0] : 1.0, model.keep_probs[1]:1.0})
         print("Test accuracy: %.2f%%" %(tacc*100))
     # prepare data needs to be saved
-    hyperparams = {'numOfConvFilter' : [8, 8, 8], 'numOfFCNeuron': [1024, 512, 10], 
+    hyperparams = {'numOfConvFilter' : [8, 8, 12], 'numOfFCNeuron': [1024, 512, 10], 
                     'init_lr': 0.005, 'augmentaion':True, 'decay_rate': None, 
                     'decay_step': None, 'keep_prob': [0.3, 0.4], 'epoches': training_steps}
     training_data = {'train_losses' : train_losses, 'train_acc' : train_acc, \
@@ -116,9 +116,9 @@ def convnet_model(training_steps):
 
 if __name__=='__main__':
     #training_steps = input("How many traing steps?")
-    training_steps = 25001
+    training_steps = 50001
     training_data = convnet_model(int(training_steps))
-    save_data_name = 'train_data0.4'
+    save_data_name = 'train_data0.6'
     with open(save_data_name, 'wb') as fh:
         pickle.dump(training_data, fh, protocol=2)
 
