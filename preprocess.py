@@ -65,5 +65,51 @@ def zca_whiten(X):
     X_whitened = np.dot(X, whiten_factor)
     return X_whitened
 
+def adjust_contrast(X):
+	"""
+	Adjust the imput images' brightness contrast.
+	X is a 4D array with the 1st D denoting number of samples, 2nd and 3rd Ds 
+	denoting the spatial dimensions, and the 4th D denoting the channels.
+	Returns a ndarray in the same shape as X with brightness contrast adjusted.
+	"""
+	Xc = X.copy()
+	darken_ind = np.random.binomial(1, 0.5, X.shape[0]).astype(np.bool)
+	brighten_ind = np.invert(darken_ind)
+	Xc[darken_ind] = darken_image(X[darken_ind])
+	Xc[brighten_ind] = brighten_image(X[brighten_ind])
+	return Xc
+
+def darken_image(X):
+	'''Darken image color contrast. X - 3D or 4D ndarray'''
+	phi = 0.99
+	theta = 0.997
+	darkened = (254./phi)*(X/(254./theta))**1.0
+	return darkened
+
+def brighten_image(X):
+	'''Brighten image color contrast. X - 3D or 4D ndarray - uncertain?'''
+	phi = .993
+	theta = 1.0
+	brightened = X*(254./phi)*(1./(255./theta))**2.
+	return brightened
+
+def augment_data(X, y):
+	"""
+	Double sample size by performaning data augmentation.
+	(1) Randomly flipping image samples horizontally or vertically
+	(2) Randomly adjust image color contrast
+	(3) Concatenate augmented data and original data
+	(4) Randomly shuffle data
+	"""
+	X_aug = random_flip180(X)
+	X_aug = adjust_contrast(X_aug)
+	y_aug = y.copy()
+	X_all = np.concatenate((X, X_aug), axis=0)
+	y_all = np.concatenate((y, y_aug), axis=0)
+	perm = np.random.permutation(X_all.shape[0])
+	X_perm = X_all[perm]
+	y_perm = y_all[perm]
+	return X_perm, y_perm
+
 
 
