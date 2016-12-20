@@ -5,7 +5,6 @@ from sklearn import preprocessing
 import sys
 sys.path.append("/Users/Zhongyu/Documents/projects/CNNplayground/")
 from preprocess import *
-import matplotlib.pyplot as plt
 
 def load_data(data_filename):
 	data = pd.read_csv(data_filename)
@@ -65,6 +64,7 @@ def unpickle(file):
 
 def plot_sample(data_filename, sample_id):
 	'''A function for plotting grayscale image of MNIST samples'''
+	import matplotlib.pyplot as plt
 	data = pd.read_csv(train_filename)
 	X = data[data.columns[1:]]
 	X = X.as_matrix()
