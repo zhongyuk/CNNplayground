@@ -43,9 +43,9 @@ def convnet_model(training_steps):
         if layer_name!='fc3':
             model.add_dropout_layer(layer_name+"/dropout")
 
-    #model.setup_learning_rate(0.01, exp_decay=True, decay_steps=1000, \
-                             #decay_rate=0.80, staircase=True,)
-    model.setup_learning_rate(0.005, exp_decay=False)
+    model.setup_learning_rate(0.01, exp_decay=True, decay_steps=5000, \
+                             decay_rate=0.80, staircase=True,)
+    #model.setup_learning_rate(0.005, exp_decay=False)
 
     train_loss = model.compute_train_loss(add_output_summary=False)
     valid_loss = model.compute_valid_loss()
@@ -58,8 +58,8 @@ def convnet_model(training_steps):
     #l2_reg_factor = 0.1
     #optimizer = model.setup_optimizer(tf.train.AdamOptimizer, l2_reg=True, l2_reg_factor=l2_reg_factor)
     # without L2 regularization
-    #optimizer = model.setup_optimizer(tf.train.GradientDescentOptimizer)
-    optimizer = model.setup_optimizer(tf.train.AdamOptimizer)
+    optimizer = model.setup_optimizer(tf.train.GradientDescentOptimizer)
+    #optimizer = model.setup_optimizer(tf.train.AdamOptimizer)
     learning_rate = model.get_learning_rate()
     merged_summary = model.merge_summaries()
     graph = model.get_graph()
@@ -83,7 +83,7 @@ def convnet_model(training_steps):
             feed_dict = {model.train_X : batch_X,
                         model.train_y : batch_y,
                         model.keep_probs[0] : 0.3,
-                        model.keep_probs[1] : 0.4}
+                        model.keep_probs[1] : 0.7}
             _, tloss, tacc, tmrg_summ = sess.run([optimizer, train_loss, train_accuracy, \
                                         merged_summary], feed_dict=feed_dict)
             train_losses[step], train_acc[step] = tloss, tacc
@@ -107,8 +107,8 @@ def convnet_model(training_steps):
         print("Test accuracy: %.2f%%" %(tacc*100))
     # prepare data needs to be saved
     hyperparams = {'numOfConvFilter' : [8, 8, 12], 'numOfFCNeuron': [1024, 512, 10], 
-                    'init_lr': 0.005, 'augmentaion':True, 'decay_rate': None, 
-                    'decay_step': None, 'keep_prob': [0.3, 0.4], 'epoches': training_steps}
+                    'init_lr': 0.01, 'augmentaion':True, 'decay_rate': 0.80, 
+                    'decay_step': 5000, 'keep_prob': [0.3, 0.7], 'epoches': training_steps}
     training_data = {'train_losses' : train_losses, 'train_acc' : train_acc, \
                      'valid_losses' : valid_losses, 'valid_acc' : valid_acc, \
                      'test_acc' : tacc, 'hyperparams' : hyperparams}
@@ -116,9 +116,9 @@ def convnet_model(training_steps):
 
 if __name__=='__main__':
     #training_steps = input("How many traing steps?")
-    training_steps = 50001
+    training_steps = 25001
     training_data = convnet_model(int(training_steps))
-    save_data_name = 'train_data0.6'
+    save_data_name = 'train_data0.7'
     with open(save_data_name, 'wb') as fh:
         pickle.dump(training_data, fh, protocol=2)
 
