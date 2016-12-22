@@ -109,9 +109,9 @@ def prepare_cifar10_input_new(data_dir, augmentation=True):
     train_X = whiten_data(train_dataset.reshape((train_labels.shape[0],-1)))
     valid_X = whiten_data(valid_dataset.reshape((valid_labels.shape[0],-1)))
     test_X  = whiten_data(test_dataset.reshape((test_labels.shape[0],-1)))
-    train_dataset = train_X.reshape((-1,3,32,32))
-    valid_dataset = valid_X.reshape((-1,3,32,32))
-    test_dataset = test_X.reshape((-1,3,32,32))
+    train_dataset = train_X.reshape((-1,32,32,3))
+    valid_dataset = valid_X.reshape((-1,32,32,3))
+    test_dataset = test_X.reshape((-1,32,32,3))
     print("One-Hot Encoding labels......")
     num_labels = 10
     train_labels = one_hot_encode(train_labels, num_labels)
@@ -170,9 +170,9 @@ def prepare_cifar10_input(data_dir, augmentation=False):
 
     # Data Preprocess: change datatype; center the data
     print("Preprocess data", "."*32)
-    train_dataset, train_labels = preprocess_data(train_dataset, train_labels, num_labels)
-    valid_dataset, valid_labels = preprocess_data(valid_dataset, valid_labels, num_labels)
-    test_dataset,  test_labels  = preprocess_data(test_dataset,  test_labels,  num_labels)
+    train_dataset, train_labels = preprocess_data_cifar10(train_dataset, train_labels, num_labels)
+    valid_dataset, valid_labels = preprocess_data_cifar10(valid_dataset, valid_labels, num_labels)
+    test_dataset,  test_labels  = preprocess_data_cifar10(test_dataset,  test_labels,  num_labels)
     dataset_list = [train_dataset, train_labels, valid_dataset, valid_labels, test_dataset, test_labels]
     print('Dataset\t\tFeatureShape\t\tLabelShape')
     print('Training set:\t', train_dataset.shape,'\t', train_labels.shape)
