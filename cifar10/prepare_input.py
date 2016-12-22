@@ -109,9 +109,9 @@ def prepare_cifar10_input_new(data_dir, augmentation=True):
     train_X = whiten_data(train_dataset.reshape((train_labels.shape[0],-1)))
     valid_X = whiten_data(valid_dataset.reshape((valid_labels.shape[0],-1)))
     test_X  = whiten_data(test_dataset.reshape((test_labels.shape[0],-1)))
-    train_dataset = train_X.reshape((-1,3,32,32))
-    valid_dataset = valid_X.reshape((-1,3,32,32))
-    test_dataset = test_X.reshape((-1,3,32,32))
+    train_dataset = train_X.reshape((-1,32,32,3))
+    valid_dataset = valid_X.reshape((-1,32,32,3))
+    test_dataset = test_X.reshape((-1,32,32,3))
     print("One-Hot Encoding labels......")
     num_labels = 10
     train_labels = one_hot_encode(train_labels, num_labels)
