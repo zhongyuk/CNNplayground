@@ -34,3 +34,5 @@
 - **/studybn directory** contains a few scripts for studying and testing bach normalization and a notebook for demonstrating how to properly use TensorFlow `tf.contrib.layers.batch_norm`. 
 
 - **cnn.py and test_cnn.py**: the former is a quick wrapper building on top of TensorFlow to enable an easier and faster usage for building a CNN model (note that only the commonly recommended/default model building options are included and implemented in `cnn.py`); the latter performs unit testing on the interfaces provided by `cnn.py`.
+
+- **preprocess.py**: contains a set of functions for preprocessing image input samples: including centering data, performing PCA whitening, ZCA whitening, image darkening, image brightening, and random image flipping (up-down-flip and left-right-flip).
