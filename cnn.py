@@ -812,8 +812,11 @@ class cnn_graph(object):
 		with self._graph.as_default():
 			return self._learning_rate
 
-	def setup_optimizer(self, optimizer, l2_reg=False, l2_reg_factor=None, add_output_summary=True):
-		train_loss = self.compute_train_loss(l2_reg, l2_reg_factor, add_output_summary)
+	def setup_optimizer(self, optimizer, loss="default", l2_reg=False, l2_reg_factor=None, add_output_summary=True):
+		if loss=="default":
+			train_loss = self.compute_train_loss(l2_reg, l2_reg_factor, add_output_summary)
+		else: # allow costumized minimization objectives
+			train_loss = loss
 		with self._graph.as_default():
 			self._optimizer = optimizer(self._learning_rate).minimize(train_loss, 
 							  global_step=self._global_step)
