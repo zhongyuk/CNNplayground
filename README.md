@@ -29,7 +29,9 @@
 
 - **/cifar10 directory** stores the code and files for further exploring the CIFAR10 dataset using deep learning techniques after the Udacity Machine Learning Nanodegree capstone project.
 
-- **/mnist directory** is a project for building a digit recoginizer upon MNIST dataset (incorporating kaggle playgorund competition) using machine learning and deep learning techniques.
+- **/mnist directory** is a project for building a digit recoginizer upon MNIST dataset (incorporating kaggle playgorund competition) using machine learning and deep learning techniques. Additionally, various machine learning technique and architectures are explored using MNIST dataset: *fractional max pooling*, *1x1 network in network architecture*, *very basic inception architecture*, *k-fold validation*, *ensembling multiple models(bagging and stacking)*.
+
+- **/leaf directory** is a project for (incorporating kaggle playground competition) building a leaf classifier using machine learning techniques.
 
 - **/studybn directory** contains a few scripts for studying and testing bach normalization and a notebook for demonstrating how to properly use TensorFlow `tf.contrib.layers.batch_norm`. 
 
