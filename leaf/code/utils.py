@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
+import sys
 sys.path.append("/Users/Zhongyu/Documents/projects/CNNplayground")
 from preprocess import center_data, pca_whiten, zca_whiten
 
@@ -55,18 +56,17 @@ def pca_transform(train_X, test_X, feature, n_components, whiten=True):
 		train_feat_transform: PCA tranformed training features np.ndarray
 		test_feat_transform: PCA tranformed testing features np.ndarray
 	"""
-	if feature not in train_X.columns:
-		msg = "No "+feature+" found in X"
-		raise NameError(msg)
 	cols = [col for col in list(train_X.columns) if feature in col]
 	train_features, test_features = train_X[cols].as_matrix(), test_X[cols].as_matrix()
-	train_features, test_features = center_data(features, axis=0)
+	train_features, test_features = center_data(train_features), center_data(test_features)
 	pca_obj = PCA(n_components=n_components, whiten=whiten)
 	pca_obj.fit(train_features)
 	print("total explained variance by %d principle components: \t %.4f" \
 		%(n_components, sum(pca_obj.explained_variance_ratio_)))
-	train_feat_transform = pca_obj.fit(train_features)
-	test_feat_transform = pca_obj.fit(test_features)
+	train_feat_transform = pca_obj.transform(train_features)
+	test_feat_transform = pca_obj.transform(test_features)
+	assert(train_feat_transform.shape==(train_X.shape[0], n_components))
+	assert(test_feat_transform.shape==(test_X.shape[0], n_components))
 	return train_feat_transform, test_feat_transform
 
 def shape_feature3D(X, feature, order='C', center=True, whiten=None):
@@ -80,13 +80,10 @@ def shape_feature3D(X, feature, order='C', center=True, whiten=None):
 	return: 
 		feat3D: reshaped features in 3D np.ndarry
 	"""
-	if feature not in X.columns:
-		msg = "No "+feature+" found in X"
-		raise NameError(msg)
 	if order not in ('C', 'F'):
 		msg = order+" is not a valid argument"
 		raise ValueError(msg)
-	if whiten is not in (None, 'pca', 'zca'):
+	if whiten not in (None, 'pca', 'zca'):
 		msg = whiten+" is not a valid argument"
 		raise ValueError(msg)
 	cols = [col for col in list(X.columns) if feature in col]
@@ -99,3 +96,5 @@ def shape_feature3D(X, feature, order='C', center=True, whiten=None):
 		features = zca_whiten(features)
 	feat3D = features.reshape((X.shape[0], 8, 8), order=order)
 	return feat3D
+
+

@@ -58,7 +58,7 @@ def pca_MLP_pipe(train_filename, test_size):
 	num_component = [8, 10, 3]
 	train_list, test_list = [], []
 	for feature, n in zip(feature_names, num_component):
-		train_transformed, test_transformed = pca_transform(train_X, test_X, n)
+		train_transformed, test_transformed = pca_transform(train_X, test_X, feature, n)
 		train_list.append(train_transformed)
 		test_list.append(test_transformed)
 	train_X = np.concatenate(train_list, axis=1).astype(np.float32)
@@ -102,5 +102,9 @@ def CNN_pipe(train_filename, test_size, order='C', center=True, whiten=None):
 	print("testing set size: \t%s\t%s " %(test_X.shape, test_y.shape))
 	return train_X, train_y, test_X, test_y
 
+if __name__=='__main__':
+	train_filename = '../train.csv'
+	train_X, train_y, test_X, test_y = simple_MLP_pipe(train_filename, 330)
+	train_X, train_y, test_X, test_y = pca_MLP_pipe(train_filename, 330)
+	train_X, train_y, test_X, test_y = CNN_pipe(train_filename, 330)
 
-	
