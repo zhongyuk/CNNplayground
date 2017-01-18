@@ -15,8 +15,8 @@ from scipy.linalg import eigh, svd
 def center_data(X, axis=0):
 	"""
 	Remove the mean along given axis. 
-	Default axis=0 to remove mean for each feature.
-	Setting axis=1 to remove mean for each sample.
+	Default axis=0 to remove mean for each feature/col.
+	Setting axis=1 to remove mean for each sample/row.
 	Return a new copy of centered zero-mean array.
 	"""
 	avg = np.mean(X, axis)
