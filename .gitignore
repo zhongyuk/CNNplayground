@@ -11,6 +11,7 @@ cifar10/data
 /tmp/*
 /logs/*
 
+
 /*/tmp
 /*logs
 
@@ -36,3 +37,4 @@ mnist/kfold_data/cnn_icp*f*_kfold
 
 # leaf data
 leaf/images/*.jpg
+leaf/code/tmp
