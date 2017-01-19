@@ -20,20 +20,20 @@ def MLP_model(train_X, train_y, test_X, test_y, epoches,
 	layers = [('fc1', num_neuron), ('fc2', num_class)]
 	for layer in layers:
 		layer_name, num_neuron = layer[0], layer[1]
-		model.add_fc_layer(layer_name, num_neuron, wt_initializer, add_output_summary=True)
-		model.add_batchnorm_layer(layer_name+'/batchnorm', add_output_summary=True)
+		model.add_fc_layer(layer_name, num_neuron, wt_initializer, add_output_summary=False)
+		model.add_batchnorm_layer(layer_name+'/batchnorm', add_output_summary=False)
 		model.add_act_layer(layer_name+'/activation')
 		if layer_name!=layers[-1][0]:
 			model.add_dropout_layer(layer_name+'/dropout')
 	model.setup_learning_rate(learning_rate, exp_decay=False, add_output_summary=False)
-	train_loss = model.compute_train_loss(add_output_summary=True)
-	valid_loss = model.compute_valid_loss(add_output_summary=True)
+	train_loss = model.compute_train_loss(add_output_summary=False)
+	valid_loss = model.compute_valid_loss(add_output_summary=False)
 	optimizer = model.setup_optimizer(tf.train.AdamOptimizer, add_output_summary=False)
-	merged_summary = model.merge_summaries()
+	#merged_summary = model.merge_summaries()
 	with tf.Session(graph=model.get_graph()) as sess:
-		print("Create summary writers")
-		train_writer = tf.train.SummaryWriter('tmp/'+logdir+'/train', graph=sess.graph)
-		valid_writer = tf.train.SummaryWriter('tmp/'+logdir+'/valid')
+		#print("Create summary writers")
+		#train_writer = tf.train.SummaryWriter('tmp/'+logdir+'/train', graph=sess.graph)
+		#valid_writer = tf.train.SummaryWriter('tmp/'+logdir+'/valid')
 		tf.initialize_all_variables().run()
 		print("Initialized")
 		model.set_kp_value('fc1/dropout', dropout)
@@ -43,16 +43,18 @@ def MLP_model(train_X, train_y, test_X, test_y, epoches,
 			batch_X = train_X[offset:(offset+batch_size), :]
 			batch_y = train_y[offset:(offset+batch_size), :]
 			train_feed_dict.update({model.train_X : batch_X, model.train_y : batch_y})
-			_, tloss, tmrg_summ = sess.run([optimizer, train_loss, merged_summary], feed_dict=train_feed_dict)
-			train_writer.add_summary(tmrg_summ, step)
+			_, tloss = sess.run([optimizer, train_loss], feed_dict=train_feed_dict)
+			#_, tloss, tmrg_summ = sess.run([optimizer, train_loss, merged_summary], feed_dict=train_feed_dict)
+			#train_writer.add_summary(tmrg_summ, step)
 			if step%500 == 0:
-				valid_feed_dict = dict(model.kp_reference_feed_dict)
-				valid_feed_dict.update({model.train_X : batch_X, model.train_y : batch_y})
-				vloss, vmrg_summ = sess.run([valid_loss, merged_summary], feed_dict=valid_feed_dict)
-				valid_writer.add_summary(vmrg_summ, step)
+				vloss = sess.run(valid_loss, feed_dict=dict(model.kp_reference_feed_dict))
+				#valid_feed_dict = dict(model.kp_reference_feed_dict)
+				#valid_feed_dict.update({model.train_X : batch_X, model.train_y : batch_y})
+				#vloss, vmrg_summ = sess.run([valid_loss, merged_summary], feed_dict=valid_feed_dict)
+				#valid_writer.add_summary(vmrg_summ, step)
 				print('Epoch: %d:\tTrain Loss: %.6f\tValid Loss: %.6f' %(step, tloss, vloss))
 		print("Finished training")
-		vloss = sess.run(valid_loss, feed_dict=valid_feed_dict)
+		vloss = sess.run(valid_loss, feed_dict=dict(model.kp_reference_feed_dict))#valid_feed_dict
 		print("Final valid loss: %.6f" %(vloss))
 
 
@@ -74,8 +76,8 @@ def CNN_model(train_X, train_y, test_X, test_y, epoches,
 	# Convolutional layer
 	#layer_name, filter_size = conv_layer[0], conv_layer[1]
 	layer_name, conv_depth = 'IncepConv1', 3
-	model.add_convIncept_layer(layer_name, conv_depth, conv_wt_initializer, add_output_summary=True)
-	model.add_batchnorm_layer(layer_name+'/batchnorm', add_output_summary=True)
+	model.add_convIncept_layer(layer_name, conv_depth, conv_wt_initializer, add_output_summary=False)
+	model.add_batchnorm_layer(layer_name+'/batchnorm', add_output_summary=False)
 	model.add_act_layer(layer_name+'/activation')
 	#model.add_pool_layer(layer_name+'/pool')
 
@@ -84,21 +86,21 @@ def CNN_model(train_X, train_y, test_X, test_y, epoches,
 	fc_wt_initializer = tf.contrib.layers.variance_scaling_initializer()
 	for fc_layer in fc_layers:
 		layer_name, num_neuron = fc_layer[0], fc_layer[1]
-		model.add_fc_layer(layer_name, num_neuron, fc_wt_initializer, add_output_summary=True)
-		model.add_batchnorm_layer(layer_name+'/batchnorm', add_output_summary=True)
+		model.add_fc_layer(layer_name, num_neuron, fc_wt_initializer, add_output_summary=False)
+		model.add_batchnorm_layer(layer_name+'/batchnorm', add_output_summary=False)
 		model.add_act_layer(layer_name+'/activation')
 		if layer_name!=fc_layers[-1][0]:
 			model.add_dropout_layer(layer_name+'/dropout')
 
 	model.setup_learning_rate(learning_rate, exp_decay=False, add_output_summary=False)
-	train_loss = model.compute_train_loss(add_output_summary=True)
-	valid_loss = model.compute_valid_loss(add_output_summary=True)
+	train_loss = model.compute_train_loss(add_output_summary=False)
+	valid_loss = model.compute_valid_loss(add_output_summary=False)
 	optimizer = model.setup_optimizer(tf.train.AdamOptimizer, add_output_summary=False)
-	merged_summary = model.merge_summaries()
+	#merged_summary = model.merge_summaries()
 	with tf.Session(graph=model.get_graph()) as sess:
-		print("Create summary writers")
-		train_writer = tf.train.SummaryWriter('tmp/'+logdir+'/train', graph=sess.graph)
-		valid_writer = tf.train.SummaryWriter('tmp/'+logdir+'/valid')
+		#print("Create summary writers")
+		#train_writer = tf.train.SummaryWriter('tmp/'+logdir+'/train', graph=sess.graph)
+		#valid_writer = tf.train.SummaryWriter('tmp/'+logdir+'/valid')
 		tf.initialize_all_variables().run()
 		print("Initialized")
 		model.set_kp_value('fc1/dropout', dropout)
@@ -108,28 +110,30 @@ def CNN_model(train_X, train_y, test_X, test_y, epoches,
 			batch_X = train_X[offset:(offset+batch_size), :]
 			batch_y = train_y[offset:(offset+batch_size), :]
 			train_feed_dict.update({model.train_X : batch_X, model.train_y : batch_y})
-			_, tloss, tmrg_summ = sess.run([optimizer, train_loss, merged_summary], feed_dict=train_feed_dict)
-			train_writer.add_summary(tmrg_summ, step)
+			_, tloss = sess.run([optimizer, train_loss], feed_dict=train_feed_dict)
+			#_, tloss, tmrg_summ = sess.run([optimizer, train_loss, merged_summary], feed_dict=train_feed_dict)
+			#train_writer.add_summary(tmrg_summ, step)
 			if step%500 == 0:
-				valid_feed_dict = dict(model.kp_reference_feed_dict)
-				valid_feed_dict.update({model.train_X : batch_X, model.train_y : batch_y})
-				vloss, vmrg_summ = sess.run([valid_loss, merged_summary], feed_dict=valid_feed_dict)
-				valid_writer.add_summary(vmrg_summ, step)
+				#valid_feed_dict = dict(model.kp_reference_feed_dict)
+				#valid_feed_dict.update({model.train_X : batch_X, model.train_y : batch_y})
+				#vloss, vmrg_summ = sess.run([valid_loss, merged_summary], feed_dict=valid_feed_dict)
+				#valid_writer.add_summary(vmrg_summ, step)
+				vloss = sess.run(valid_loss, feed_dict=dict(model.kp_reference_feed_dict))
 				print('Epoch: %d:\tTrain Loss: %.6f\tValid Loss: %.6f' %(step, tloss, vloss))
 		print("Finished training")
-		vloss = sess.run(valid_loss, feed_dict=valid_feed_dict)
+		vloss = sess.run(valid_loss, feed_dict=dict(model.kp_reference_feed_dict))#valid_feed_dict
 		print("Final valid loss: %.6f" %(vloss))
 
 if __name__=='__main__':
 	train_filename = '../train.csv'
 	# Simple MLP model
-	#train_X, train_y, test_X, test_y = simple_MLP_pipe(train_filename, 330)
-	#MLP_model(train_X, train_y, test_X, test_y, 20000, 1024, 0.001, 0.5, 'simple')
+	train_X, train_y, test_X, test_y = simple_MLP_pipe(train_filename, 330)
+	MLP_model(train_X, train_y, test_X, test_y, 20000, 1024, 0.001, 0.5, 'plain')
 
 	# PCA MLP model
-	#train_X, train_y, test_X, test_y = pca_MLP_pipe(train_filename, 330)
-	#MLP_model(train_X, train_y, test_X, test_y, 20000, 512, 0.001, 0.5, 'pca')
-	
+	train_X, train_y, test_X, test_y = pca_MLP_pipe(train_filename, 330)
+	MLP_model(train_X, train_y, test_X, test_y, 20000, 512, 0.001, 0.5, 'pca')
+
 	# CNN model
-	train_X, train_y, test_X, test_y = CNN_pipe(train_filename, 330)
-	CNN_model(train_X, train_y, test_X, test_y, 20000, 3096, 0.0005, 0.3, 'cnn')
+	train_X, train_y, test_X, test_y = CNN_pipe_csv(train_filename, 330)
+	CNN_model(train_X, train_y, test_X, test_y, 20000, 2048, 0.0005, 0.3, 'cnn')

@@ -22,15 +22,14 @@ def load_extract_feature(filename, is_training):
 	return:
 		X: a data frame of extracted features: margin, texture, shape (unique sample ID is not included)
 		y: a data series of numerically encoded species
-		species_dict: a dictionary mapping each specie to its unique numerical encode ID
 	"""
 	data = pd.read_csv(filename)
 	if is_training:
-		species_dict = load_species_encode()
+		species_dict = unpickle_data('../species_encode')
 		data = data.replace({'species':species_dict})
 		X = data.drop(['id','species'], axis=1)
 		y = data['species']
-		return X, y, species_dict
+		return X, y
 	else:
 		X = data.drop(['id'], axis=1)
 		return X
@@ -155,6 +154,59 @@ def batch_downsize(image_dir, target_length=64):
 	tcost = time.time()-t
 	print("the time cost for downsizing all %d images: %.2f seconds" %(len(img_dict), tcost))
 	return img_dict
+
+def load_image_data(filename, is_training=True):
+	"""
+	parameters:
+		filename: csv data filename
+		is_training: if True, return X and y; if False, return X
+	return:
+		X: downsized np 64 by 64 image data matching sample ID
+		y: numerically encoded species matching sample ID
+	"""
+	data = pd.read_csv(filename)
+	ID_images = unpickle_data("../images_downsized")
+	if is_training:
+		ID_species = data[['id', 'species']]
+		species_encode = unpickle_data("../species_encode")
+		ID_species = ID_species.replace({'species':species_encode})
+		#X = ID_species['id'].map(lambda ID: ID_images[ID]) # pd series
+		X = np.stack([ID_images[ID] for ID in ID_species['id']], axis=0) # 3D ndarray
+		y = ID_species['species']
+		return X, y
+	else:
+		IDs = data['id']
+		X = IDs['id'].map(lambda ID: ID_images[ID])
+		return X
+
+def center_whiten_image(X, whiten=None):
+	"""
+	parameters:
+		X: image ndarray
+	return:
+		X_cw: centered and whitened X
+	Note: whitening data is computationally expensive, 
+		  hence this step can take a little while,
+		  depending on the size of your data.
+	"""
+	flag = False
+	if len(X.shape)<2:
+		raise ValueError("X must have dimensions >= 2")
+	elif len(X.shape)>=3:
+		X2D = X.reshape((X.shape[0], -1))
+		flag = True
+	t = time.time()
+	X_cw = center_data(X2D)
+	if whiten=='pca':
+		X_cw = pca_whiten(X_cw)
+	elif whiten=='zca':
+		X_cw = zca_whiten(X_cw)
+	tcost = time.time() - t
+	print("time cost for center and whiten X: %.2f seconds" %(tcost))
+	if flag:
+		X_cw = X_cw.reshape(X.shape)
+	return X_cw
+
 
 def pickle_data(data, filename):
 	"""
