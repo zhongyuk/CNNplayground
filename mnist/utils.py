@@ -58,7 +58,7 @@ def make_submission(pred, filename):
 def unpickle(file):
     # Load pickled data
     fo = open(file, 'rb')
-    dict = pickle.load(fo)
+    d = pickle.load(fo)
     fo.close()
     return dict
 

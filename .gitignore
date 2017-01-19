@@ -38,3 +38,7 @@ mnist/kfold_data/cnn_icp*f*_kfold
 # leaf data
 leaf/images/*.jpg
 leaf/code/tmp
+
+# leaf pickle files
+leaf/images_downsized
+leaf/species_encode

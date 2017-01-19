@@ -4,6 +4,11 @@ from sklearn.decomposition import PCA
 import sys
 sys.path.append("/Users/Zhongyu/Documents/projects/CNNplayground")
 from preprocess import center_data, pca_whiten, zca_whiten
+import PIL
+from PIL import Image
+from six.moves import cPickle as pickle
+import time
+from os import listdir
 
 def load_extract_feature(filename, is_training):
 	"""
@@ -21,8 +26,7 @@ def load_extract_feature(filename, is_training):
 	"""
 	data = pd.read_csv(filename)
 	if is_training:
-		species = sorted(data.species.unique())
-		species_dict = {species: index for index, species in enumerate(species)}
+		species_dict = load_species_encode()
 		data = data.replace({'species':species_dict})
 		X = data.drop(['id','species'], axis=1)
 		y = data['species']
@@ -30,6 +34,15 @@ def load_extract_feature(filename, is_training):
 	else:
 		X = data.drop(['id'], axis=1)
 		return X
+
+def create_species_encode():
+	"""
+	create and save species dict for convenience
+	"""
+	data = pd.read_csv("../train.csv")
+	species = sorted(data.species.unique())
+	species_dict = {species: index for index, species in enumerate(species)}
+	return species_dict
 
 def one_hot_encode(y):
 	"""
@@ -97,4 +110,95 @@ def shape_feature3D(X, feature, order='C', center=True, whiten=None):
 	feat3D = features.reshape((X.shape[0], 8, 8), order=order)
 	return feat3D
 
+def downsize_image(img, target_length=64):
+	"""
+	functionalities: downsize an image to a 64 by 64 image while preserving aspect ratio
+	parameters:
+		img: a PIL.JpegImagePlugin.JpegImageFile, img.size is expected to be > 64
+		target_height: target height after downsizing
+	return:
+		img_downsized: a 64 by 64 numpy ndarray
+	"""
+	h, w = img.size[0], img.size[1]
+	ratio = float(h)/w
+	if h>w:
+		new_size = (target_length, int(round(target_length/ratio)))
+	else:
+		new_size = (int(round(target_length*ratio)), target_length)
+	img_downsized = img.resize(new_size, PIL.Image.ANTIALIAS)
+	img_np = np.array(img_downsized)
+	img_square = np.zeros([target_length, target_length],dtype=img_np.dtype)
+	img_square[:img_np.shape[0], :img_np.shape[1]] = img_np
+	return img_square
 
+def batch_downsize(image_dir, target_length=64):
+	"""
+	functionalities: 
+		Batch downsize all images and save into a dictionary using 
+		sample ID as key and downsized square image numpy array as value
+	parameters:
+		image_dir: the directory path to all images
+		target_length: target size length after downsizing images
+	returns:
+		img_dict: dictonary for storing all downsized square np image array
+	"""
+	img_dict = {}
+	all_image_filenames = listdir(image_dir)
+	t = time.time()
+	for img_fn in all_image_filenames:
+		img_id = int(img_fn.split('.')[0])
+		with Image.open(image_dir+img_fn) as img:
+			img_np = downsize_image(img, target_length=target_length)
+			assert(img_np.shape==(target_length, target_length))
+			img_dict[img_id] = img_np
+	assert(len(img_dict)==1584)
+	tcost = time.time()-t
+	print("the time cost for downsizing all %d images: %.2f seconds" %(len(img_dict), tcost))
+	return img_dict
+
+def pickle_data(data, filename):
+	"""
+	functionaly: pickle/save data
+	parameters:
+		data: python data 
+		filename: path+filename for saving data
+	return:
+		None
+	"""
+	with open(filename, "wb") as fh:
+		pickle.dump(data, fh, protocol=2)
+
+def unpickle_data(filename):
+	"""
+	functionaly: unpickle/load filename
+	parameters:
+		filename: path+filename for loading data
+	return:
+		data: loaded data
+	"""
+	with open(filename, 'rb') as fo:
+		data = pickle.load(fo)
+	return data
+
+
+
+if __name__=='__main__':
+	# save species encoder dictionary
+	species_encode = create_species_encode() 
+	pickle_data(species_encode, "../species_encode")
+	# load species numeric encoder
+	species_dict = unpickle_data("../species_encode")
+	assert(len(species_dict)==99)
+
+	#save batch downsized images
+	image_dir = '/Users/Zhongyu/Documents/projects/CNNplayground/leaf/images/'
+	img_dict = batch_downsize(image_dir, 64)
+	pickle_data(img_dict, "../images_downsized")
+	# load downsized image data
+	t = time.time()
+	img_data = unpickle_data("../images_downsized")
+	tcost = time.time()-t
+	print("time costs for loading saved image data: %.2f seconds" %(tcost))
+
+
+	 
