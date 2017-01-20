@@ -42,3 +42,5 @@ leaf/code/tmp
 # leaf pickle files
 leaf/images_downsized
 leaf/species_encode
+leaf/images_downsized32
+leaf/images_downsized16

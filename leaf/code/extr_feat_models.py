@@ -128,12 +128,12 @@ if __name__=='__main__':
 	train_filename = '../train.csv'
 	# Simple MLP model
 	train_X, train_y, test_X, test_y = simple_MLP_pipe(train_filename, 330)
-	MLP_model(train_X, train_y, test_X, test_y, 20000, 1024, 0.001, 0.5, 'plain')
+	MLP_model(train_X, train_y, test_X, test_y, 20000, 512, 0.001, 0.5, 'plain')
 
 	# PCA MLP model
 	train_X, train_y, test_X, test_y = pca_MLP_pipe(train_filename, 330)
-	MLP_model(train_X, train_y, test_X, test_y, 20000, 512, 0.001, 0.5, 'pca')
+	MLP_model(train_X, train_y, test_X, test_y, 20000, 256, 0.001, 0.5, 'pca')
 
 	# CNN model
 	train_X, train_y, test_X, test_y = CNN_pipe_csv(train_filename, 330)
-	CNN_model(train_X, train_y, test_X, test_y, 20000, 2048, 0.0005, 0.3, 'cnn')
+	CNN_model(train_X, train_y, test_X, test_y, 20000, 1024, 0.0005, 0.3, 'cnn')

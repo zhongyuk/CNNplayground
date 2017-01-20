@@ -165,7 +165,7 @@ def load_image_data(filename, is_training=True):
 		y: numerically encoded species matching sample ID
 	"""
 	data = pd.read_csv(filename)
-	ID_images = unpickle_data("../images_downsized")
+	ID_images = unpickle_data("../images_downsized32")
 	if is_training:
 		ID_species = data[['id', 'species']]
 		species_encode = unpickle_data("../species_encode")
