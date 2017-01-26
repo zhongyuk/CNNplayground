@@ -2,24 +2,24 @@ from utils import *
 from sklearn.model_selection import train_test_split
 import sys
 sys.path.append("/Users/Zhongyu/Documents/projects/CNNplayground")
-from preprocess import center_data, zca_whiten, pca_whiten
+from preprocess import center_data, zca_whiten, pca_whiten, augment_data
 
-def simple_MLP_pipe(train_filename, test_size, center=True):
+def simple_MLP_pipe(train_filename, test_size, center=True, random_state=None):
 	"""
 	parameters:
 		train_fileanme: train csv data filename
 		test_size: 	floating point or integer
 	return: ready to feed into deep learning model
-		train_X: np.ndarray np.float32
-		train_y: one hot encoded np.ndarray np.float32
-		test_X : np.ndarray np.float32
-		test_y : one hot encoded np.ndarray np.float32
+		train_X: np.ndarray np.float32 shape=(_, 192)
+		train_y: one hot encoded np.ndarray np.float32 shape=(_, 99)
+		test_X : np.ndarray np.float32 shape=(_, 192)
+		test_y : one hot encoded np.ndarray np.float32 shape=(_, 99)
 	"""
 	# load data
 	X, y = load_extract_feature(train_filename, True)
 	# train test split
 	train_X, test_X, train_y, test_y = train_test_split(X, y, 
-		test_size=test_size, stratify=y, random_state=924)
+		test_size=test_size, stratify=y, random_state=random_state)
 	# one hot encode all ys
 	train_y = one_hot_encode(train_y)
 	test_y  = one_hot_encode(test_y)
@@ -34,22 +34,22 @@ def simple_MLP_pipe(train_filename, test_size, center=True):
 	print("testing set size: \t%s\t%s " %(test_X.shape, test_y.shape))
 	return train_X, train_y, test_X, test_y
 
-def pca_MLP_pipe(train_filename, test_size):
+def pca_MLP_pipe(train_filename, test_size, random_state=None):
 	"""
 	parameters:
 		train_fileanme: train csv data filename
 		test_size: 	floating point or integer
 	return: ready to feed into deep learning model
-		train_X: np.ndarray np.float32
-		train_y: one hot encoded np.ndarray np.float32
-		test_X : np.ndarray np.float32
-		test_y : one hot encoded np.ndarray np.float32
+		train_X: np.ndarray np.float32 shape=(_, 21)
+		train_y: one hot encoded np.ndarray np.float32 shape=(_, 99)
+		test_X : np.ndarray np.float32 shape=(_, 21)
+		test_y : one hot encoded np.ndarray np.float32 shape=(_, 99)
 	"""
 	# load_data
 	X, y = load_extract_feature(train_filename, True)
 	# train test split
 	train_X, test_X, train_y, test_y = train_test_split(X, y, 
-		test_size=test_size, stratify=y, random_state=924)
+		test_size=test_size, stratify=y, random_state=random_state)
 	# one hot encode all ys
 	train_y = one_hot_encode(train_y)
 	test_y  = one_hot_encode(test_y)
@@ -68,7 +68,8 @@ def pca_MLP_pipe(train_filename, test_size):
 	print("testing set size: \t%s\t%s " %(test_X.shape, test_y.shape))
 	return train_X, train_y, test_X, test_y
 
-def CNN_pipe_csv(train_filename, test_size, order='C', center=True, whiten=None):
+def CNN_pipe_csv(train_filename, test_size, order='C', center=True, 
+				 whiten=None, random_state=None):
 	"""
 	parameters:
 		train_fileanme: train csv data filename
@@ -76,16 +77,16 @@ def CNN_pipe_csv(train_filename, test_size, order='C', center=True, whiten=None)
 		center: center the data or not
 		whiten: None - not whitening input, 'pca' - pca whitening, 'zca' - zca whitening
 	return: ready to feed into deep learning model
-		train_X: np.ndarray np.float32
-		train_y: one hot encoded np.ndarray np.float32
-		test_X : np.ndarray np.float32
-		test_y : one hot encoded np.ndarray np.float32
+		train_X: np.ndarray np.float32 shape=(_, 8, 8, 3)
+		train_y: one hot encoded np.ndarray np.float32 shape=(_, 99)
+		test_X : np.ndarray np.float32 shape=(_, 8, 8, 3)
+		test_y : one hot encoded np.ndarray np.float32 shape=(_, 99)
 	"""
 	# load data
 	X, y = load_extract_feature(train_filename, True)
 	# train test split
 	train_X, test_X, train_y, test_y = train_test_split(X, y, 
-		test_size=test_size, stratify=y, random_state=924)
+		test_size=test_size, stratify=y, random_state=random_state)
 	# one hot encode all ys
 	train_y = one_hot_encode(train_y)
 	test_y  = one_hot_encode(test_y)
@@ -104,23 +105,23 @@ def CNN_pipe_csv(train_filename, test_size, order='C', center=True, whiten=None)
 	print("testing set size: \t%s\t%s " %(test_X.shape, test_y.shape))
 	return train_X, train_y, test_X, test_y
 
-def CNN_pipe_img(train_filename, test_size, whiten=None):
+def CNN_pipe_img(train_filename, test_size, whiten=None, random_state=None):
 	"""
 	parameters:
 		train_fileanme: train csv data filename
 		test_size: 	floating point or integer
 		whiten: None - not whitening input, 'pca' - pca whitening, 'zca' - zca whitening
 	return: ready to feed into deep learning model
-		train_X: np.ndarray np.float32
-		train_y: one hot encoded np.ndarray np.float32
-		test_X : np.ndarray np.float32
-		test_y : one hot encoded np.ndarray np.float32
+		train_X: np.ndarray np.float32 shape=(_, 32, 32, 1)
+		train_y: one hot encoded np.ndarray np.float32 shape=(_, 99)
+		test_X : np.ndarray np.float32 shape=(_, 32, 32, 1)
+		test_y : one hot encoded np.ndarray np.float32 shape=(_, 99)
 	"""
 	# load data
 	X, y = load_image_data(train_filename, True)
 	# train test split
 	train_X, test_X, train_y, test_y = train_test_split(X, y, 
-		test_size=test_size, stratify=y, random_state=924)
+		test_size=test_size, stratify=y, random_state=random_state)
 	# one hot encode all ys
 	train_y = one_hot_encode(train_y)
 	test_y  = one_hot_encode(test_y)
@@ -129,10 +130,37 @@ def CNN_pipe_img(train_filename, test_size, whiten=None):
 	test_X = center_whiten_image(test_X, whiten=whiten)
 	train_X = train_X[:,:,:,None].astype(np.float32)
 	test_X = test_X[:,:,:,None].astype(np.float32)
+	#train_X, train_y = augment_data(train_X, train_y)
 	# print out train and test set sizes
 	print("training set size: \t%s\t%s " %(train_X.shape, train_y.shape))
 	print("testing set size: \t%s\t%s " %(test_X.shape, test_y.shape))
 	return train_X, train_y, test_X, test_y
+
+def combined_model_pipe(train_filename, test_size, random_state=None, whiten=None):
+	"""
+	parameters:
+		train_fileanme: train csv data filename
+		test_size: 	floating point or integer
+		whiten: None - not whitening input, 'pca' - pca whitening, 'zca' - zca whitening
+		random_state: random state integer for sklearn.model_selection.train_test_split
+					  seed for train_test_split must be between 0 and 4294967295 (inclusive)
+	return: ready to feed into deep learning model
+		train_X_csv: np.ndarray np.float32 shape=(_, 21) or (_, 192)
+		train_X_img: np.ndarray np.float32 shape=(_, 32, 32, 1)
+		train_y: one hot encoded np.ndarray np.float32 shape=(_, 99)
+		test_X_csv : np.ndarray np.float32 shape=(_, 21) or (_, 192)
+		test_X_img: np.ndarray np.float32 shape=(_, 32, 32, 1)
+		test_y : one hot encoded np.ndarray np.float32 shape=(_, 99)
+	"""
+	if random_state==None:
+		random_state = np.random.randint(low=0, high=4294967296)
+	train_X_csv, train_y_csv, test_X_csv, test_y_csv = pca_MLP_pipe(train_filename, test_size,
+																 random_state=0)
+	train_X_img, train_y_img, test_X_img, test_y_img = CNN_pipe_img(train_filename, test_size,
+																 random_state=0)
+	assert(np.array_equal(train_y_csv, train_y_img))
+	assert(np.array_equal(test_y_csv,  test_y_img))
+	return train_X_csv, train_X_img, train_y_csv, test_X_csv, test_X_img, test_y_csv
 
 
 
@@ -142,4 +170,5 @@ if __name__=='__main__':
 	train_X, train_y, test_X, test_y = pca_MLP_pipe(train_filename, 330)
 	train_X, train_y, test_X, test_y = CNN_pipe_csv(train_filename, 330)
 	train_X, train_y, test_X, test_y = CNN_pipe_img(train_filename, 330)
+	train_X_csv, train_X_img, train_y, test_X_csv, test_X_img, test_y = combined_model_pipe(train_filename, 110, 924)
 
